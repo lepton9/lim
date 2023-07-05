@@ -1,0 +1,9 @@
+TODO:
+
+- show the file text
+- cursor movement
+  - show cursor
+- set line numbers
+- adding and editing text
+  - add text at cursor position
+  - overwrite the file with edited content when saving
