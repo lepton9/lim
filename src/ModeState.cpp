@@ -7,7 +7,7 @@ void ModeState::handleEvent(Event event) {
   switch (currentState) {
   case State::NORMAL:
     if(event == Event::INPUT) sToInput();
-    if (event == Event::COMMAND) sToCommand();
+    else if (event == Event::COMMAND) sToCommand();
     break;
   case State::INPUT:
     if (event == Event::BACK) sToNormal();

@@ -1,9 +1,16 @@
 TODO:
 
+- not saving empty lines when saving
+- show all the text meant for user in a command bar
 - show the file text
+  - update line on screen when modified
+  - scrolling the text
 - cursor movement
   - show cursor
 - set line numbers
 - adding and editing text
   - add text at cursor position
-  - overwrite the file with edited content when saving
+- config file
+  - syntax highlighting
+  - indent amount
+  - background color

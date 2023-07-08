@@ -3,13 +3,12 @@ INC := -I ./include
 FLAGS := -c $(INC)
 CC := g++
 
-lep: lep.o ModeState.o
-	${CC} $^ -o $@
+OBJS := lep.o ModeState.o
 
-lep.o: $(SRC)/lep.cpp
-	$(CC) $(FLAGS) $<
+lep: $(OBJS)
+	$(CC) $^ -o $@
 
-ModeState.o: $(SRC)/ModeState.cpp
+%.o: $(SRC)/%.cpp
 	$(CC) $(FLAGS) $<
 
 debug:
@@ -17,7 +16,7 @@ debug:
 	gdb -tui lepDebug
 
 clean:
-	rm -rf *.o
+	rm -rf *.o lepDebug
 
 run:
 	./lep
