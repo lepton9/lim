@@ -1,6 +1,17 @@
 TODO:
 
-- not saving empty lines when saving
+- if in command mode, don't reset cursor pos and keep it in command line
+- curMove left and right wrapping
+- if command line doesn't have text, move stat bar one down and move it up when in command mode
+- save used commands in command mode to array
+  - able to search old command using up and down arrows
+- window size
+  - text window
+  - status bar
+    - file name
+    - command box
+    - current line and cur pos
+    - current mode
 - show all the text meant for user in a command bar
 - show the file text
   - update line on screen when modified

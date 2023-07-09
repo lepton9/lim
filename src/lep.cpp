@@ -1,5 +1,7 @@
 
+#include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <ios>
 #include <iostream>
 #include <string>
@@ -8,6 +10,7 @@
 #include <fstream>
 #include <termios.h>
 #include <vector>
+#include <sys/ioctl.h>
 #include "../include/ModeState.h"
 #include "../include/stev.h"
 //#include <conio.h>
@@ -32,12 +35,14 @@ class Lep : public ModeState {
       unsaved = false;
       cX = 0;
       cY = 0;
+      getWinSize();
     }
 
     void modeNormal() {
       cout << "Normal mode" << endl;
       int c;
       while(currentState == State::NORMAL) {
+        refresh();
         c = readKey();
 
         switch (c) {
@@ -67,6 +72,7 @@ class Lep : public ModeState {
       cout << "Input mode" << endl;
       int c;
       while (currentState == State::INPUT) {
+        refresh();
         c = readKey();
         printf("%d ('%c')\n", c, c);
         switch (c) {
@@ -112,8 +118,9 @@ class Lep : public ModeState {
     void modeCommand() {
       cout << "Command mode" << endl;
       int c;
-      string seq = ":";
+      comLineText = ":";
       while (currentState == State::COMMAND) {
+        refresh();
         c = readKey();
 
         switch (c) {
@@ -121,10 +128,10 @@ class Lep : public ModeState {
             handleEvent(Event::BACK);
             break;
           case 127: //Backspace
-            comModeDelChar(&seq);
+            comModeDelChar();
             break;
           case 10: //Enter
-            for(char ch : seq) {
+            for(char ch : comLineText) {
               if (ch == ':') continue;
               else if (ch == 'w') overwriteFile();
               else if (ch == 'q') exitLep();
@@ -133,11 +140,11 @@ class Lep : public ModeState {
             break;
           default:
             if (!iscntrl(c) && c < 127) {
-              seq += c;
+              comLineText += c;
             }
             break;
         }
-        if (seq.empty()) {
+        if (comLineText.empty()) {
           handleEvent(Event::BACK);
         }
       }
@@ -159,26 +166,37 @@ class Lep : public ModeState {
       sleep(1);
       system("clear");
 
-      string line;
-      while (getline(file, line)) {
-        lines.push_back(line);
+      if (file.peek() == EOF) {
+        lines.push_back("");
+      } else {
+        string line;
+        while (getline(file, line)) {
+          lines.push_back(line);
+        }
       }
       file.close();
     }
       
     void overwriteFile() {
+      if (lines.empty() || (lines.size() == 1 && lines.front().empty())) {
+        unsaved = false;
+        return;
+      } 
       ofstream file(fileName);
-      for(string line : lines) {
-        file << line << endl;
+      for(const string& line : lines) {
+        file << line << '\n';
       }
       file.close();
       unsaved = false;
     }
 
   private:
+    int winRows;
+    int winCols;
     string fileName;
     vector<string> lines;
     bool unsaved;
+    string comLineText = "";
     int indentAm = 2;
     int cX, cY;
 
@@ -223,9 +241,9 @@ class Lep : public ModeState {
       }
     }
 
-    void comModeDelChar(string* seq) {
-      if (!seq->empty()) {
-        seq->pop_back();
+    void comModeDelChar() {
+      if (!comLineText.empty()) {
+        comLineText.pop_back();
       }
     }
 
@@ -276,6 +294,7 @@ class Lep : public ModeState {
       } else if (c == 'l' || c == RIGHT_KEY) {
         curRight();
       }
+      updateStatBar();
     }
 
     void curUp() {
@@ -289,7 +308,6 @@ class Lep : public ModeState {
       else {
         cX = 0;
       }
-      cout << "x: " << cX << " y: " << cY << endl;
     }
 
     void curDown() {
@@ -303,33 +321,111 @@ class Lep : public ModeState {
       else {
         cX = lines.back().length();
       }
-      cout << "x: " << cX << " y: " << cY << endl;
     }
 
-    void curLeft() {
+    //Maybe in config file state if you want to wrap or not wrap = true/false
+    void curLeft() { //Change to wrap to previous line end if cX == 0
       if (cX > 0) cX--;
-      cout << "x: " << cX << " y: " << cY << endl;
     }
 
-    void curRight() {
+    void curRight() {//Change to go to next line beginning if cX == lines[cY].length()
       if (lines.empty()) {
         return;
       }
       if (cX < lines[cY].length()) cX++;
-      cout << "x: " << cX << " y: " << cY << endl;
+    }
+
+    void updateCurPosOnScr() {
+
+    }
+
+    void renderShownText() {
+      //"\x1b[K" erases the end of the line
+      //~ to fill winRows
+    }
+
+    void updateStatBar() {
+      cout << "\033[s"; // Save cursor pos
+      cout << "\033[" << winRows + 1 << ";1H" << "\033[2K\r";
+      if (currentState != State::COMMAND) {
+        cout << "\033[" << winRows + 2 << ";1H"; // Move cursor to the last line
+      }
+      cout << "\033[2K\r"; // Clear current line
+      cout << "\033[47;30m"; // Set bg color to white and text color to black
+      string mode;
+      if (currentState == State::INPUT) mode = " INPUT";
+      else if (currentState == State::COMMAND) mode = " COMMAND";
+      else mode = " NORMAL";
+      string saveText = " s ";
+      string saveStatus;
+      if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
+      else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
+      string eInfo = mode + " | " + fileName + " " + saveStatus;
+      string curInfo = " | C: " + to_string(cX+1) + " L: " + to_string(cY+1) + " ";
+      cout << eInfo;
+     
+      int fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+      cout << string(fillerSpace, ' ') << curInfo;
+      // Restore text color and cursor pos
+      cout << "\033[0m\033[u" << flush;
+    }
+
+    void updateCommandBar() {
+      if (currentState != State::COMMAND) return;
+      updateStatBar();
+      cout << "\033[s"; // Save cursor pos
+      cout << "\033[" << winRows + 2 << ";1H"; // Move cursor to the last line
+      cout << "\033[2K\r"; // Clear current line
+      cout << " " << comLineText;
+      cout << "\033[0m\033[u" << flush;
+    }
+
+    void refresh() {
+      getWinSize();
+      updateStatBar();
+      updateCommandBar();
+    }
+
+    void getWinSize() {
+      struct winsize size;
+      if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1) {
+          cerr << "Failed to get terminal window size" << endl;
+          return;
+      }
+      winRows = size.ws_row - 2; //Stat bar and command line
+      winCols = size.ws_col;
+      //cout << "Terminal window size: " << size.ws_col << " columns x " << size.ws_row << " rows" << endl;
     }
 
     void exitLep() {
       if (unsaved) {
-        cout << "Unsaved changes" << endl;
+        comLineText = "Unsaved changes. Save changes [y/n]:";
+        string ans = "";
+        refresh();
         while(1) {
-          cout << "Save changes [y/n]:";
           char c = readKey();
-          if (c == 'y') {
-            overwriteFile();
-            break;
+          if (c == 10) {
+            if (ans == "y") {
+              overwriteFile();
+              break;
+            }
+            else if (ans == "n") break;
           }
-          else if (c == 'n') break;
+          else if (c == 127 && ans.length() > 0) {
+            comModeDelChar();
+            ans.pop_back();
+            updateCommandBar();
+          }
+          else if (c == 27) {
+            comLineText.clear();
+            handleEvent(Event::BACK);
+            return;
+          }
+          else if (!iscntrl(c) && c < 127) {
+            ans += c;
+            comLineText += c;
+            updateCommandBar();
+          }
         }
       }
       system("clear");
