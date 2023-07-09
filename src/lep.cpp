@@ -10,6 +10,7 @@
 #include <fstream>
 #include <termios.h>
 #include <vector>
+#include <algorithm>
 #include <sys/ioctl.h>
 #include "../include/ModeState.h"
 #include "../include/stev.h"
@@ -118,6 +119,8 @@ class Lep : public ModeState {
     void modeCommand() {
       cout << "Command mode" << endl;
       int c;
+      int comInd = oldCommands.size();
+      string curCom = "";
       comLineText = ":";
       while (currentState == State::COMMAND) {
         refresh();
@@ -131,16 +134,34 @@ class Lep : public ModeState {
             comModeDelChar();
             break;
           case 10: //Enter
-            for(char ch : comLineText) {
-              if (ch == ':') continue;
-              else if (ch == 'w') overwriteFile();
-              else if (ch == 'q') exitLep();
+            if (execCommand()) {
+              oldCommands.push_back(comLineText);
             }
             handleEvent(Event::BACK);
+            break;
+          case UP_KEY:
+            if (curCom == "") curCom = comLineText;
+            if (comInd > 0) {
+              comInd--;
+              comLineText = oldCommands[comInd];
+            }
+            break;
+          case DOWN_KEY:
+            if (comInd < oldCommands.size()) {
+              comInd++;
+            }
+            if (comInd == oldCommands.size()) {
+              comLineText = curCom;
+              break;
+            }
+            comLineText = oldCommands[comInd];
+
             break;
           default:
             if (!iscntrl(c) && c < 127) {
               comLineText += c;
+              curCom = comLineText;
+              comInd = oldCommands.size();
             }
             break;
         }
@@ -148,6 +169,29 @@ class Lep : public ModeState {
           handleEvent(Event::BACK);
         }
       }
+    }
+
+    bool execCommand() {
+      for(char c : comLineText) {
+        if (c == ':') continue;
+        if (find(validCommands.begin(), validCommands.end(), c) == validCommands.end()) {
+          showErrorMsg("Not a valid command " + comLineText);
+          return false;
+        }
+      }
+      for(char ch : comLineText) {
+        if (ch == ':') continue;
+        else if (ch == 'w') overwriteFile();
+        else if (ch == 'q') exitLep();
+      }
+      if (comLineText.length() > 1) return true;
+      return false;
+    }
+
+    void showErrorMsg(string error) {
+      comLineText = "\033[40;31m" + error + "\033[0m";
+      updateCommandBar();
+      sleep(1);
     }
 
     void readFile(string fName) {
@@ -196,9 +240,16 @@ class Lep : public ModeState {
     string fileName;
     vector<string> lines;
     bool unsaved;
+    vector<char> validCommands = {'w', 'q'};
     string comLineText = "";
-    int indentAm = 2;
+    vector<string> oldCommands;
     int cX, cY;
+
+    //Config
+    int indentAm = 2;
+    bool curWrap = false;
+    int sBarColorBG;
+    int sBarColorFG;
 
     void newlineEscSeq() {
       string newLine = lines[cY].substr(cX);
@@ -324,8 +375,15 @@ class Lep : public ModeState {
     }
 
     //Maybe in config file state if you want to wrap or not wrap = true/false
-    void curLeft() { //Change to wrap to previous line end if cX == 0
+    void curLeft() {
+      if (lines.empty()) {
+        return;
+      }
       if (cX > 0) cX--;
+      else if (cX == 0 && curWrap && cY != 0) {
+        cY--;
+        cX = lines[cY].length();
+      }
     }
 
     void curRight() {//Change to go to next line beginning if cX == lines[cY].length()
@@ -333,6 +391,10 @@ class Lep : public ModeState {
         return;
       }
       if (cX < lines[cY].length()) cX++;
+      else if (cX == lines[cY].length() && curWrap && cY != lines.size() - 1) {
+        cY++;
+        cX = 0;
+      }
     }
 
     void updateCurPosOnScr() {
