@@ -1,4 +1,4 @@
-
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -11,6 +11,8 @@
 #include <termios.h>
 #include <vector>
 #include <algorithm>
+#include <locale>
+#include <codecvt>
 #include <sys/ioctl.h>
 #include "../include/ModeState.h"
 #include "../include/stev.h"
@@ -40,23 +42,22 @@ class Lep : public ModeState {
     }
 
     void modeNormal() {
-      cout << "Normal mode" << endl;
       int c;
       while(currentState == State::NORMAL) {
         refresh();
         c = readKey();
-
+        //printf("%d ('%c')\n", c, c);
         switch (c) {
           case 27:
-            cout << "esc" << endl;
+            //cout << "esc" << endl;
             handleEvent(Event::BACK);
             break;
           case 'i':
-            cout << "i" << endl;
+            //cout << "i" << endl;
             handleEvent(Event::INPUT);
             break;
           case ':':
-            cout << ":" << endl;
+            //cout << ":" << endl;
             handleEvent(Event::COMMAND);
             break;
 
@@ -70,33 +71,27 @@ class Lep : public ModeState {
     }
 
     void modeInput() {
-      cout << "Input mode" << endl;
       int c;
       while (currentState == State::INPUT) {
         refresh();
         c = readKey();
-        printf("%d ('%c')\n", c, c);
         switch (c) {
           case 27: //Esc
             handleEvent(Event::BACK);
             break;
           case 10: //Enter
-            cout << "Enter" << endl;
             unsaved = true;
             newlineEscSeq();
             break;
           case 9: //Tab
-            cout << "Tab" << endl;
             unsaved = true;
             tabKey();
             break;
           case 127: //Backspace
-            cout << "Backspace" << endl;
             unsaved = true;
             backspaceKey();
             break;
           case DEL_KEY: //Delete
-            cout << "Delete" << endl;
             unsaved = true;
             deleteKey();
             break;
@@ -107,9 +102,9 @@ class Lep : public ModeState {
             break;
 
           default:
-            if (!iscntrl(c) && c < 127) {
+            if (!iscntrl(c)) {
               unsaved = true;
-              //inputChar(c);
+              inputChar(c);
             }
             break;
         }
@@ -117,7 +112,6 @@ class Lep : public ModeState {
     }
 
     void modeCommand() {
-      cout << "Command mode" << endl;
       int c;
       int comInd = oldCommands.size();
       string curCom = "";
@@ -171,29 +165,6 @@ class Lep : public ModeState {
       }
     }
 
-    bool execCommand() {
-      for(char c : comLineText) {
-        if (c == ':') continue;
-        if (find(validCommands.begin(), validCommands.end(), c) == validCommands.end()) {
-          showErrorMsg("Not a valid command " + comLineText);
-          return false;
-        }
-      }
-      for(char ch : comLineText) {
-        if (ch == ':') continue;
-        else if (ch == 'w') overwriteFile();
-        else if (ch == 'q') exitLep();
-      }
-      if (comLineText.length() > 1) return true;
-      return false;
-    }
-
-    void showErrorMsg(string error) {
-      comLineText = "\033[40;31m" + error + "\033[0m";
-      updateCommandBar();
-      sleep(1);
-    }
-
     void readFile(string fName) {
       fileName = fName;
       fstream file(fileName);
@@ -235,6 +206,8 @@ class Lep : public ModeState {
     }
 
   private:
+    int marginLeft = 2;
+    int marginTop = 1;
     int winRows;
     int winCols;
     string fileName;
@@ -250,6 +223,12 @@ class Lep : public ModeState {
     bool curWrap = false;
     int sBarColorBG;
     int sBarColorFG;
+
+    void inputChar(char c) {
+      lines[cY].insert(cX, 1, c);
+      //if(lines[cY][cX-1] < 0 && c < 0) return;
+      cX++;
+    }
 
     void newlineEscSeq() {
       string newLine = lines[cY].substr(cX);
@@ -269,13 +248,13 @@ class Lep : public ModeState {
       if (cX == 0) {
         if (cY == 0) return;
         string delLine = lines[cY];
-        lines.erase(lines.begin() + cY);
+        lines.erase(lines.begin() + cY, lines.begin() + cY + 1);
         cY--;
         cX = lines[cY].length();
         lines[cY].append(delLine);
 
       } else {
-        lines[cY].erase(cX - 1);
+        lines[cY].erase(cX - 1, 1);
         cX--;
       }
     }
@@ -330,6 +309,9 @@ class Lep : public ModeState {
           }
         }
         return '\x1b';
+      }
+      else if (c < 0) {
+        return '\0';
       } else {
         return c;
       }
@@ -386,8 +368,8 @@ class Lep : public ModeState {
       }
     }
 
-    void curRight() {//Change to go to next line beginning if cX == lines[cY].length()
-      if (lines.empty()) {
+    //Change to go to next line beginning if cX == lines[cY].length()
+    void curRight() {      if (lines.empty()) {
         return;
       }
       if (cX < lines[cY].length()) cX++;
@@ -397,20 +379,57 @@ class Lep : public ModeState {
       }
     }
 
-    void updateCurPosOnScr() {
+    bool execCommand() {
+      for(char c : comLineText) {
+        if (c == ':') continue;
+        if (find(validCommands.begin(), validCommands.end(), c) == validCommands.end()) {
+          showErrorMsg("Not a valid command " + comLineText);
+          return false;
+        }
+      }
+      for(char ch : comLineText) {
+        if (ch == ':') continue;
+        else if (ch == 'w') overwriteFile();
+        else if (ch == 'q') exitLep();
+      }
+      if (comLineText.length() > 1) return true;
+      return false;
+    }
 
+    void showErrorMsg(string error) {
+      comLineText = "\033[40;31m" + error + "\033[0m";
+      updateCommandBar();
+      sleep(1);
+    }
+
+    void updateCurPosOnScr() {
+      cout << "\033[H";
+      printf("\033[%dC", cX + marginLeft);
+      printf("\033[%dB", cY + marginTop);
+      fflush(stdout);
     }
 
     void renderShownText() {
+      cout << "\033[H";
+      printf("\033[%dB", marginTop);
+      for(string line : lines) {
+        printf("\033[%dC", marginLeft);
+        cout << line << "\033[1E";
+      }
+      if (lines.size() < winRows) {
+        for (int i = 0; i < winRows-lines.size(); i++) {
+          printf("\033[40;34m\033[%dC~\033[1E", marginLeft);
+        }
+        cout << "\033[0m" << flush;
+      }
       //"\x1b[K" erases the end of the line
-      //~ to fill winRows
     }
 
     void updateStatBar() {
       cout << "\033[s"; // Save cursor pos
-      cout << "\033[" << winRows + 1 << ";1H" << "\033[2K\r";
+      cout << "\033[" << winRows + marginTop + 1 << ";1H" << "\033[2K\r";
       if (currentState != State::COMMAND) {
-        cout << "\033[" << winRows + 2 << ";1H"; // Move cursor to the last line
+        cout << "\033[" << winRows + marginTop + 2 << ";1H"; // Move cursor to the last line
       }
       cout << "\033[2K\r"; // Clear current line
       cout << "\033[47;30m"; // Set bg color to white and text color to black
@@ -423,7 +442,7 @@ class Lep : public ModeState {
       if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
       else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
       string eInfo = mode + " | " + fileName + " " + saveStatus;
-      string curInfo = " | C: " + to_string(cX+1) + " L: " + to_string(cY+1) + " ";
+      string curInfo = " | L: " + to_string(cY+1) + " C: " + to_string(cX+1) + " ";
       cout << eInfo;
      
       int fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
@@ -436,7 +455,7 @@ class Lep : public ModeState {
       if (currentState != State::COMMAND) return;
       updateStatBar();
       cout << "\033[s"; // Save cursor pos
-      cout << "\033[" << winRows + 2 << ";1H"; // Move cursor to the last line
+      cout << "\033[" << winRows + marginTop + 2 << ";1H"; // Move cursor to the last line
       cout << "\033[2K\r"; // Clear current line
       cout << " " << comLineText;
       cout << "\033[0m\033[u" << flush;
@@ -444,8 +463,11 @@ class Lep : public ModeState {
 
     void refresh() {
       getWinSize();
+      cout << "\x1b[2J"; //Clears the screen
+      renderShownText();
       updateStatBar();
       updateCommandBar();
+      updateCurPosOnScr();
     }
 
     void getWinSize() {
@@ -454,8 +476,8 @@ class Lep : public ModeState {
           cerr << "Failed to get terminal window size" << endl;
           return;
       }
-      winRows = size.ws_row - 2; //Stat bar and command line
-      winCols = size.ws_col;
+      winRows = size.ws_row - marginTop - 2; //Stat bar and command line
+      winCols = size.ws_col - marginLeft;
       //cout << "Terminal window size: " << size.ws_col << " columns x " << size.ws_row << " rows" << endl;
     }
 

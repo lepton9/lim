@@ -1,22 +1,31 @@
 TODO:
 
-- window size
-  - text window
-  - status bar
-    - file name
-    - command box
-    - current line and cur pos
-    - current mode
+- file tree to the side crtl + n
+  - ability to open files
+  - create new files
+  - rename files
+- commands
+  - rename
+  - modify the config file with set
+- maybe make winRows change by 1 when showing or not showing the command line box
+  - or make the command box be always visible
+- only render the whole text again when
+  - window size changes
+  - scrolling
+- only render the edited text by getting the cY line
 - show all the text meant for user in a command bar
 - show the file text
   - update line on screen when modified
   - scrolling the text
-- cursor movement
-  - show cursor
-- set line numbers
-- adding and editing text
-  - add text at cursor position
+
 - config file
   - syntax highlighting
   - indent amount
   - background color
+  - set line numbers
+
+- unicode support
+  - if char < 0 move cursor only by one
+  - maybe make the lines a vector<vector<string>> where it can store larger chars like 'ä'
+  - when erasing check if its negative then remove the character next to it also
+  - cursor moving over unicode chars
