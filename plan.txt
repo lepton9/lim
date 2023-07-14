@@ -1,5 +1,10 @@
 TODO:
 
+- update winsize when it changes
+- refresh text only near cursor
+  - only render the edited text by getting the cY line
+- maybe don't reset the cursor position when on command mode
+  - only reset when leaving command mode so the cursor is in the command box
 - file tree to the side crtl + n
   - ability to open files
   - create new files
@@ -12,11 +17,7 @@ TODO:
 - only render the whole text again when
   - window size changes
   - scrolling
-- only render the edited text by getting the cY line
 - show all the text meant for user in a command bar
-- show the file text
-  - update line on screen when modified
-  - scrolling the text
 
 - config file
   - syntax highlighting

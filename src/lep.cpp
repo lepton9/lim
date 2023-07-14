@@ -43,8 +43,9 @@ class Lep : public ModeState {
 
     void modeNormal() {
       int c;
+      renderShownText();
+      updateStatBar();
       while(currentState == State::NORMAL) {
-        refresh();
         c = readKey();
         //printf("%d ('%c')\n", c, c);
         switch (c) {
@@ -72,8 +73,9 @@ class Lep : public ModeState {
 
     void modeInput() {
       int c;
+      updateStatBar();
       while (currentState == State::INPUT) {
-        refresh();
+        renderShownText();
         c = readKey();
         switch (c) {
           case 27: //Esc
@@ -116,13 +118,16 @@ class Lep : public ModeState {
       int comInd = oldCommands.size();
       string curCom = "";
       comLineText = ":";
+      updateStatBar();
+      //cout << "\033[s";
       while (currentState == State::COMMAND) {
-        refresh();
+        updateCommandBar();
         c = readKey();
 
         switch (c) {
           case 27:
             handleEvent(Event::BACK);
+            //cout << "\033[u";
             break;
           case 127: //Backspace
             comModeDelChar();
@@ -178,8 +183,6 @@ class Lep : public ModeState {
         cout << "File " << fileName << " created" << endl;
         file.open(fileName, ios::in);
       }
-      sleep(1);
-      system("clear");
 
       if (file.peek() == EOF) {
         lines.push_back("");
@@ -190,8 +193,11 @@ class Lep : public ModeState {
         }
       }
       file.close();
+
+      sleep(1);
+      clsResetCur();
     }
-      
+  
     void overwriteFile() {
       if (lines.empty() || (lines.size() == 1 && lines.front().empty())) {
         unsaved = false;
@@ -206,7 +212,7 @@ class Lep : public ModeState {
     }
 
   private:
-    int marginLeft = 2;
+    int marginLeft = 5;
     int marginTop = 1;
     int winRows;
     int winCols;
@@ -226,21 +232,25 @@ class Lep : public ModeState {
 
     void inputChar(char c) {
       lines[cY].insert(cX, 1, c);
-      //if(lines[cY][cX-1] < 0 && c < 0) return;
+      cout << "\033[1C" << flush;
       cX++;
     }
 
     void newlineEscSeq() {
       string newLine = lines[cY].substr(cX);
       lines[cY].erase(cX);
-      lines.insert(lines.begin() + cY + 1, newLine);
       cY++;
+      lines.insert(lines.begin() + cY, newLine);
       cX = 0;
+      printf("\033[1E\033[%dG", marginLeft);
+      fflush(stdout);
     }
 
     void tabKey() {
       lines[cY].insert(cX, string(indentAm, ' '));
       cX += indentAm;
+      printf("\033[%dC", indentAm);
+      fflush(stdout);
     }
 
     void backspaceKey() {
@@ -252,11 +262,14 @@ class Lep : public ModeState {
         cY--;
         cX = lines[cY].length();
         lines[cY].append(delLine);
+        printf("\033[1A\033[%dG", cX + marginLeft);
 
       } else {
         lines[cY].erase(cX - 1, 1);
         cX--;
+        printf("\033[1D");
       }
+      fflush(stdout);
     }
 
     void deleteKey() {
@@ -335,11 +348,17 @@ class Lep : public ModeState {
         return;
       }
       if (cY > 0) {
-        cX = std::min(cX, static_cast<int>(lines[cY-1].length()));
+        cout << "\033[1A" << flush;
         cY--;
+
+        if (lines[cY].length() < cX) {
+          printf("\033[%dD", cX - static_cast<int>(lines[cY].length()));
+          cX = lines[cY].length();
+        }
       }
       else {
         cX = 0;
+        printf("\033[%d;%dH", cY + marginTop, cX + marginLeft);
       }
     }
 
@@ -348,11 +367,16 @@ class Lep : public ModeState {
         return;
       }
       if (cY < lines.size() - 1) {
-        cX = std::min(cX, static_cast<int>(lines[cY+1].length()));
+        cout << "\033[1B" << flush;
         cY++;
+        if (lines[cY].length() < cX) {
+          printf("\033[%dD", cX - static_cast<int>(lines[cY].length()));
+          cX = lines[cY].length();
+        }
       }
       else {
         cX = lines.back().length();
+        printf("\033[%d;%dH", cY + marginTop, cX + marginLeft);
       }
     }
 
@@ -361,22 +385,45 @@ class Lep : public ModeState {
       if (lines.empty()) {
         return;
       }
-      if (cX > 0) cX--;
+      if (cX > 0) {
+        cout << "\033[1D" << flush;
+        cX--;
+      }
       else if (cX == 0 && curWrap && cY != 0) {
+        printf("\033[1A");
         cY--;
         cX = lines[cY].length();
+        printf("\033[%dG", cX + marginLeft);
       }
     }
 
     //Change to go to next line beginning if cX == lines[cY].length()
-    void curRight() {      if (lines.empty()) {
+    void curRight() {      
+      if (lines.empty()) {
         return;
       }
-      if (cX < lines[cY].length()) cX++;
-      else if (cX == lines[cY].length() && curWrap && cY != lines.size() - 1) {
+      if (cX < lines[cY].length()) {
+        cout << "\033[1C" << flush;
+        cX++;
+      }
+      else if (cX == lines[cY].length() && curWrap && cY < lines.size() - 1) {
+        cout << "\033[1E" << flush;
         cY++;
         cX = 0;
       }
+    }
+
+    void getCurPos(int* x, int* y) {
+      cout << "\033[6n";
+      char response[32];
+      int bytesRead = read(STDIN_FILENO, response, sizeof(response) - 1);
+      response[bytesRead] = '\0';
+      sscanf(response, "\033[%d;%dR", x, y);
+    }
+
+    void clsResetCur() {
+      printf("\033[2J\033[%d;%dH", marginTop, marginLeft);
+      fflush(stdout);
     }
 
     bool execCommand() {
@@ -402,6 +449,7 @@ class Lep : public ModeState {
       sleep(1);
     }
 
+    //To be deleted
     void updateCurPosOnScr() {
       cout << "\033[H";
       printf("\033[%dC", cX + marginLeft);
@@ -410,26 +458,27 @@ class Lep : public ModeState {
     }
 
     void renderShownText() {
+      cout << "\033[s";
       cout << "\033[H";
-      printf("\033[%dB", marginTop);
+      printf("\033[%d;0H", marginTop);
       for(string line : lines) {
-        printf("\033[%dC", marginLeft);
+        printf("\033[2K\033[%dG", marginLeft);
         cout << line << "\033[1E";
       }
-      if (lines.size() < winRows) {
-        for (int i = 0; i < winRows-lines.size(); i++) {
-          printf("\033[40;34m\033[%dC~\033[1E", marginLeft);
+      if (lines.size() < winRows - marginTop - 2) {
+        for (int i = 0; i <= winRows - marginTop - 2 - lines.size(); i++) {
+          printf("\033[40;34m\033[2K\033[%dG~\033[1E", marginLeft);
         }
-        cout << "\033[0m" << flush;
+        cout << "\033[0m";
       }
-      //"\x1b[K" erases the end of the line
+      cout << "\033[u" << flush;
     }
 
     void updateStatBar() {
       cout << "\033[s"; // Save cursor pos
-      cout << "\033[" << winRows + marginTop + 1 << ";1H" << "\033[2K\r";
+      printf("\033[%d;0H\033[2K\r", winRows - 1);
       if (currentState != State::COMMAND) {
-        cout << "\033[" << winRows + marginTop + 2 << ";1H"; // Move cursor to the last line
+        printf("\033[%d;0H", winRows); // Move cursor to the last line
       }
       cout << "\033[2K\r"; // Clear current line
       cout << "\033[47;30m"; // Set bg color to white and text color to black
@@ -442,7 +491,7 @@ class Lep : public ModeState {
       if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
       else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
       string eInfo = mode + " | " + fileName + " " + saveStatus;
-      string curInfo = " | L: " + to_string(cY+1) + " C: " + to_string(cX+1) + " ";
+      string curInfo = to_string(cY + 1) + ", " + to_string(cX + 1) + " ";
       cout << eInfo;
      
       int fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
@@ -452,22 +501,22 @@ class Lep : public ModeState {
     }
 
     void updateCommandBar() {
-      if (currentState != State::COMMAND) return;
-      updateStatBar();
       cout << "\033[s"; // Save cursor pos
-      cout << "\033[" << winRows + marginTop + 2 << ";1H"; // Move cursor to the last line
+      printf("\033[%d;1H", winRows); // Move cursor to the last line
       cout << "\033[2K\r"; // Clear current line
       cout << " " << comLineText;
       cout << "\033[0m\033[u" << flush;
     }
 
+    // To be deleted
     void refresh() {
+      cout << "\033[s";
       getWinSize();
-      cout << "\x1b[2J"; //Clears the screen
       renderShownText();
-      updateStatBar();
       updateCommandBar();
-      updateCurPosOnScr();
+      updateStatBar();
+      //updateCurPosOnScr();
+      cout << "\033[u" << flush;
     }
 
     void getWinSize() {
@@ -476,16 +525,17 @@ class Lep : public ModeState {
           cerr << "Failed to get terminal window size" << endl;
           return;
       }
-      winRows = size.ws_row - marginTop - 2; //Stat bar and command line
-      winCols = size.ws_col - marginLeft;
+      winRows = size.ws_row;
+      winCols = size.ws_col;
       //cout << "Terminal window size: " << size.ws_col << " columns x " << size.ws_row << " rows" << endl;
     }
 
     void exitLep() {
       if (unsaved) {
         comLineText = "Unsaved changes. Save changes [y/n]:";
+        updateStatBar();
+        updateCommandBar();
         string ans = "";
-        refresh();
         while(1) {
           char c = readKey();
           if (c == 10) {
