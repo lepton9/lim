@@ -1,8 +1,10 @@
 TODO:
 
+- copying and pasting
+  - visual mode for selecting text
+- show when is the last time the file was written
+- set a time to show a command box info text and not sleep(1) and pause the program
 - update winsize when it changes
-- refresh text only near cursor
-  - only render the edited text by getting the cY line
 - maybe don't reset the cursor position when on command mode
   - only reset when leaving command mode so the cursor is in the command box
 - file tree to the side crtl + n
@@ -10,8 +12,16 @@ TODO:
   - create new files
   - rename files
 - commands
+  - :# to go to specific line number
+  - dd to remove line
+  - :q! force quit and don't save if unsaved
+  - G to bottom of file
+  - gg to top of file
+  - w, e, b to move over word
+  - / to search for instances of a keyword
   - rename
   - modify the config file with set
+  - restart or reset to restart the editor
 - maybe make winRows change by 1 when showing or not showing the command line box
   - or make the command box be always visible
 - only render the whole text again when
@@ -20,9 +30,12 @@ TODO:
 - show all the text meant for user in a command bar
 
 - config file
+  - read the file when opening the editor
   - syntax highlighting
   - indent amount
-  - background color
+  - theme
+    - background color
+    - text color
   - set line numbers
 
 - unicode support

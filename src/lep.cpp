@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <unistd.h>
-#include <stdlib.h>
+#include <stdlib.h> 
 #include <fstream>
 #include <termios.h>
 #include <vector>
@@ -17,7 +17,6 @@
 #include "../include/ModeState.h"
 #include "../include/stev.h"
 //#include <conio.h>
-
 
 using namespace std;
 
@@ -39,26 +38,24 @@ class Lep : public ModeState {
       cX = 0;
       cY = 0;
       getWinSize();
+      readConfig();
     }
 
     void modeNormal() {
       int c;
-      renderShownText();
+      renderShownText(firstShownLine);
       updateStatBar();
       while(currentState == State::NORMAL) {
         c = readKey();
         //printf("%d ('%c')\n", c, c);
         switch (c) {
           case 27:
-            //cout << "esc" << endl;
             handleEvent(Event::BACK);
             break;
           case 'i':
-            //cout << "i" << endl;
             handleEvent(Event::INPUT);
             break;
           case ':':
-            //cout << ":" << endl;
             handleEvent(Event::COMMAND);
             break;
 
@@ -73,9 +70,8 @@ class Lep : public ModeState {
 
     void modeInput() {
       int c;
-      updateStatBar();
       while (currentState == State::INPUT) {
-        renderShownText();
+        updateStatBar();
         c = readKey();
         switch (c) {
           case 27: //Esc
@@ -212,10 +208,11 @@ class Lep : public ModeState {
     }
 
   private:
-    int marginLeft = 5;
+    int marginLeft = 7;
     int marginTop = 1;
     int winRows;
     int winCols;
+    int firstShownLine = 0;
     string fileName;
     vector<string> lines;
     bool unsaved;
@@ -226,14 +223,23 @@ class Lep : public ModeState {
 
     //Config
     int indentAm = 2;
-    bool curWrap = false;
+    bool curWrap = true;
+    int lineNumPad = 3;
+    bool lineNum = true;
+    bool relativenumber = false;
     int sBarColorBG;
     int sBarColorFG;
+
+    void readConfig() {
+      //.lepconfig
+      if (!lineNum) marginLeft = 2;
+    }
 
     void inputChar(char c) {
       lines[cY].insert(cX, 1, c);
       cout << "\033[1C" << flush;
       cX++;
+      updateRenderedLines(cY, 1);
     }
 
     void newlineEscSeq() {
@@ -242,8 +248,14 @@ class Lep : public ModeState {
       cY++;
       lines.insert(lines.begin() + cY, newLine);
       cX = 0;
-      printf("\033[1E\033[%dG", marginLeft);
+      if (cY-1 == firstShownLine + winRows - 2 - marginTop) {
+        scrollDown();
+        printf("\033[%dG", marginLeft);
+      } else {
+        printf("\033[1E\033[%dG", marginLeft);
+      }
       fflush(stdout);
+      updateRenderedLines(cY-1);
     }
 
     void tabKey() {
@@ -251,6 +263,7 @@ class Lep : public ModeState {
       cX += indentAm;
       printf("\033[%dC", indentAm);
       fflush(stdout);
+      updateRenderedLines(cY, 1);
     }
 
     void backspaceKey() {
@@ -263,11 +276,12 @@ class Lep : public ModeState {
         cX = lines[cY].length();
         lines[cY].append(delLine);
         printf("\033[1A\033[%dG", cX + marginLeft);
-
+        updateRenderedLines(cY);
       } else {
         lines[cY].erase(cX - 1, 1);
         cX--;
         printf("\033[1D");
+        updateRenderedLines(cY, 1);
       }
       fflush(stdout);
     }
@@ -278,9 +292,10 @@ class Lep : public ModeState {
         string delLine = lines[cY+1];
         lines.erase(lines.begin() + cY + 1);
         lines[cY] += delLine;
-
+        updateRenderedLines(cY);
       } else {
         lines[cY].erase(cX, 1);
+        updateRenderedLines(cY, 1);
       }
     }
 
@@ -341,6 +356,7 @@ class Lep : public ModeState {
         curRight();
       }
       updateStatBar();
+      updateLineNums(firstShownLine);
     }
 
     void curUp() {
@@ -348,7 +364,11 @@ class Lep : public ModeState {
         return;
       }
       if (cY > 0) {
-        cout << "\033[1A" << flush;
+        if (cY == firstShownLine) {
+          scrollUp();
+        } else {
+          cout << "\033[1A" << flush;
+        }
         cY--;
 
         if (lines[cY].length() < cX) {
@@ -367,8 +387,13 @@ class Lep : public ModeState {
         return;
       }
       if (cY < lines.size() - 1) {
-        cout << "\033[1B" << flush;
+        if (cY == firstShownLine + winRows - 2 - marginTop) {
+          scrollDown();
+        } else {
+          cout << "\033[1B" << flush;
+        }
         cY++;
+
         if (lines[cY].length() < cX) {
           printf("\033[%dD", cX - static_cast<int>(lines[cY].length()));
           cX = lines[cY].length();
@@ -376,11 +401,10 @@ class Lep : public ModeState {
       }
       else {
         cX = lines.back().length();
-        printf("\033[%d;%dH", cY + marginTop, cX + marginLeft);
+        printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft);
       }
     }
 
-    //Maybe in config file state if you want to wrap or not wrap = true/false
     void curLeft() {
       if (lines.empty()) {
         return;
@@ -390,14 +414,17 @@ class Lep : public ModeState {
         cX--;
       }
       else if (cX == 0 && curWrap && cY != 0) {
-        printf("\033[1A");
+        if (cY == firstShownLine) {
+          scrollUp();
+        } else {
+          printf("\033[1A");
+        }
         cY--;
         cX = lines[cY].length();
         printf("\033[%dG", cX + marginLeft);
       }
     }
 
-    //Change to go to next line beginning if cX == lines[cY].length()
     void curRight() {      
       if (lines.empty()) {
         return;
@@ -407,18 +434,15 @@ class Lep : public ModeState {
         cX++;
       }
       else if (cX == lines[cY].length() && curWrap && cY < lines.size() - 1) {
-        cout << "\033[1E" << flush;
+        if (cY == firstShownLine + winRows - 2 - marginTop) {
+          scrollDown();
+        } else {
+          printf("\033[1E");
+        }
         cY++;
         cX = 0;
+        printf("\033[%dG", marginLeft);
       }
-    }
-
-    void getCurPos(int* x, int* y) {
-      cout << "\033[6n";
-      char response[32];
-      int bytesRead = read(STDIN_FILENO, response, sizeof(response) - 1);
-      response[bytesRead] = '\0';
-      sscanf(response, "\033[%d;%dR", x, y);
     }
 
     void clsResetCur() {
@@ -449,6 +473,14 @@ class Lep : public ModeState {
       sleep(1);
     }
 
+    void getCurPosOnScr(int* x, int* y) {
+      cout << "\033[6n";
+      char response[32];
+      int bytesRead = read(STDIN_FILENO, response, sizeof(response) - 1);
+      response[bytesRead] = '\0';
+      sscanf(response, "\033[%d;%dR", x, y);
+    }
+
     //To be deleted
     void updateCurPosOnScr() {
       cout << "\033[H";
@@ -457,13 +489,89 @@ class Lep : public ModeState {
       fflush(stdout);
     }
 
-    void renderShownText() {
+    void scrollUp() {
+      renderShownText(--firstShownLine);
+    }
+
+    void scrollDown() {
+      renderShownText(++firstShownLine);
+    }
+
+    string alignR(string s, int w) {
+      return string(w-s.length(), ' ') + s;
+    }
+
+    void checkLineNumSpace(string strLNum) {
+      if (strLNum.length() > lineNumPad) {
+        lineNumPad = strLNum.length();
+        if (marginLeft - 1 <= lineNumPad) marginLeft++;
+      }
+    }
+
+    string showLineNum(int lNum) {
+      if (lineNum) {
+        string strLNum = to_string(lNum);
+        if (relativenumber) {
+          if (lNum == 0) {
+            checkLineNumSpace(to_string(cY+1));
+            return "\033[0G\033[97m" + alignR(to_string(cY+1), lineNumPad) + "\033[0m"; // White highlight
+          }
+          return "\033[0G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
+        }
+        checkLineNumSpace(strLNum);
+        if (lNum == cY + 1) {
+          return "\033[0G\033[97m" + alignR(strLNum, lineNumPad) + "\033[0m"; // White highlight
+        }
+        return "\033[0G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
+      }
+      return "\0";
+    }
+
+    void updateLineNums(int startLine) {
+      if (lineNum) {
+        cout << "\033[s";
+        printf("\033[%d;0H", marginTop + startLine - firstShownLine);
+        if (relativenumber) {
+          for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
+            cout << showLineNum(abs(cY-i)) << "\033[1E";
+          }
+        }
+        else {
+          for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
+            cout << showLineNum(i + 1) << "\033[1E";
+          }
+        }
+        cout << "\033[u" << flush;
+      }
+    }
+
+    void updateRenderedLines(int startLine, int count = -1) {
       cout << "\033[s";
-      cout << "\033[H";
-      printf("\033[%d;0H", marginTop);
-      for(string line : lines) {
-        printf("\033[2K\033[%dG", marginLeft);
-        cout << line << "\033[1E";
+      printf("\033[%d;0H", marginTop + startLine - firstShownLine);
+      if (count < 0) count = lines.size();
+
+      int maxIter = min(winRows - marginTop - 2 - (startLine - firstShownLine)
+          , winRows - marginTop - 2 + 1);
+      int maxIterWithOffset = min(maxIter, winRows - marginTop - 2 - (startLine - firstShownLine));
+
+      for (int i = startLine; i < lines.size() && i <= startLine + maxIterWithOffset 
+          && i - startLine < count; i++) {
+        cout << "\033[2K";
+        if (!relativenumber) cout << showLineNum(i + 1);
+        printf("\033[%dG", marginLeft);
+        cout << lines[i] << "\033[1E";
+      }
+      cout << "\033[u" << flush;
+      if (relativenumber) updateLineNums(firstShownLine);
+    }
+
+    void renderShownText(int startLine) {
+      cout << "\033[s";
+      printf("\033[%d;1H", marginTop);
+      for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
+        cout << "\033[2K";
+        printf("\033[%dG", marginLeft);
+        cout << lines[i] << "\033[1E";
       }
       if (lines.size() < winRows - marginTop - 2) {
         for (int i = 0; i <= winRows - marginTop - 2 - lines.size(); i++) {
@@ -472,6 +580,7 @@ class Lep : public ModeState {
         cout << "\033[0m";
       }
       cout << "\033[u" << flush;
+      updateLineNums(startLine);
     }
 
     void updateStatBar() {
@@ -512,7 +621,7 @@ class Lep : public ModeState {
     void refresh() {
       cout << "\033[s";
       getWinSize();
-      renderShownText();
+      renderShownText(firstShownLine);
       updateCommandBar();
       updateStatBar();
       //updateCurPosOnScr();
@@ -591,7 +700,6 @@ int main(int argc, char** argv) {
   else {
     fileName = "fileNameNotGiven.txt";
   }
-
 
   Lep lep;
   lep.readFile(fileName);
