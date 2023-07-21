@@ -4,13 +4,17 @@
 enum class State {
   NORMAL,
   INPUT,
-  COMMAND
+  COMMAND,
+  VISUAL,
+  VLINE
 };
 
 enum class Event {
   BACK,
   INPUT,
-  COMMAND
+  COMMAND,
+  VISUAL,
+  VLINE
 };
 
 #endif

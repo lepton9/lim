@@ -15,6 +15,8 @@ class ModeState {
     void sToNormal();
     void sToInput();
     void sToCommand();
+    void sToVisual();
+    void sToVLine();
 };
 
 #endif

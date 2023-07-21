@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -31,6 +32,26 @@ enum sKey {
   DEL_KEY,
 };
 
+struct textArea {
+  int bX, bY;
+  int eX, eY;
+
+  textArea() {
+    clear();
+  }
+
+  void clear() {
+    bX = -1;
+    bY = -1;
+    eX = -1;
+    eY = -1;
+  }
+
+  bool isNull() {
+      return (bX == -1 || bY == -1 || eX == -1 || bY == -1);
+  }
+};
+
 class Lep : public ModeState {
   public:
     Lep() {
@@ -57,6 +78,15 @@ class Lep : public ModeState {
             break;
           case ':':
             handleEvent(Event::COMMAND);
+            break;
+          case 'v':
+            handleEvent(Event::VISUAL);
+            break;
+          case 'V':
+            handleEvent(Event::VLINE);
+            break;
+          case 'p':
+            pasteClipboard();
             break;
 
           //Movement
@@ -166,6 +196,68 @@ class Lep : public ModeState {
       }
     }
 
+    void modeVisual() {
+      if (currentState == State::VISUAL) {
+        selectedText.bX = cX;
+        selectedText.bY = cY;
+        selectedText.eX = cX;
+        selectedText.eY = cY;
+      }
+      else if (currentState == State::VLINE) {
+        selectedText.bX = 0;
+        selectedText.bY = cY;
+        selectedText.eX = lines[cY].length();
+        selectedText.eY = cY;
+      }
+
+      updateStatBar();
+      int c;
+      while (currentState == State::VISUAL || currentState == State::VLINE) {
+        updateShowSelection();
+        c = readKey();
+        switch (c) {
+          case 27: //Esc
+            selectedText.clear();
+            handleEvent(Event::BACK);
+            break;
+          case 10: //Enter
+            break;
+          case 127: //Backspace
+            break;
+          case DEL_KEY: //Delete
+            deleteSelection();
+            break;
+          case 'y':
+            copySelection();
+            handleEvent(Event::BACK);
+            break;
+          case 'd':
+            copySelection();
+            deleteSelection();
+            handleEvent(Event::BACK);
+            break;
+          case 'p':
+            if (!clipboard.empty()) {
+              deleteSelection();
+              cX--;
+              pasteClipboard();
+            }
+            handleEvent(Event::BACK);
+            break;
+
+          //Movement
+          case 'h': case 'j': case 'k': case 'l':
+          case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
+            curMove(c);
+            updateSelectedText();
+            break;
+
+          default:
+            break;
+        }
+      }
+    }
+
     void readFile(string fName) {
       fileName = fName;
       fstream file(fileName);
@@ -213,13 +305,17 @@ class Lep : public ModeState {
     int winRows;
     int winCols;
     int firstShownLine = 0;
-    string fileName;
     vector<string> lines;
     bool unsaved;
     vector<char> validCommands = {'w', 'q'};
     string comLineText = "";
     vector<string> oldCommands;
+    vector<string> clipboard;
+    textArea selectedText;
     int cX, cY;
+
+    string fileName;
+    string configFilePath = "./.lepconfig";
 
     //Config
     int indentAm = 2;
@@ -231,7 +327,6 @@ class Lep : public ModeState {
     int sBarColorFG;
 
     void readConfig() {
-      //.lepconfig
       if (!lineNum) marginLeft = 2;
     }
 
@@ -481,11 +576,8 @@ class Lep : public ModeState {
       sscanf(response, "\033[%d;%dR", x, y);
     }
 
-    //To be deleted
-    void updateCurPosOnScr() {
-      cout << "\033[H";
-      printf("\033[%dC", cX + marginLeft);
-      printf("\033[%dB", cY + marginTop);
+    void syncCurPosOnScr() {
+      printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft);
       fflush(stdout);
     }
 
@@ -594,6 +686,8 @@ class Lep : public ModeState {
       string mode;
       if (currentState == State::INPUT) mode = " INPUT";
       else if (currentState == State::COMMAND) mode = " COMMAND";
+      else if (currentState == State::VISUAL) mode = " VISUAL";
+      else if (currentState == State::VLINE) mode = " V-LINE";
       else mode = " NORMAL";
       string saveText = " s ";
       string saveStatus;
@@ -617,15 +711,162 @@ class Lep : public ModeState {
       cout << "\033[0m\033[u" << flush;
     }
 
-    // To be deleted
-    void refresh() {
-      cout << "\033[s";
-      getWinSize();
-      renderShownText(firstShownLine);
-      updateCommandBar();
-      updateStatBar();
-      //updateCurPosOnScr();
-      cout << "\033[u" << flush;
+    void updateSelectedText() {
+      if (currentState == State::VISUAL) {
+        selectedText.eX = cX;
+        selectedText.eY = cY;
+      }
+      else if (currentState == State::VLINE) {
+        selectedText.eX = lines[cY].length();
+        selectedText.eY = cY;
+      }
+    }
+
+    void updateShowSelection() {
+      if (selectedText.isNull()) return;
+      textArea sel = selectedText;
+      checkSelectionPoints(&sel);
+
+      if (sel.bY < firstShownLine) {
+        sel.bY = firstShownLine;
+        sel.bX = 0;
+      }
+      if (sel.eY > firstShownLine + winRows - marginTop - 2) {
+        sel.eY = firstShownLine + winRows - marginTop - 2;
+        sel.eX = lines[sel.eY].length();
+      }
+
+      updateRenderedLines((sel.bY == firstShownLine) ? firstShownLine : sel.bY-1, sel.eY-sel.bY + 3);
+
+      cout << "\033[s\033[7m"; // Inverse color
+      printf("\033[%d;%dH", marginTop + sel.bY - firstShownLine, marginLeft + sel.bX);
+      if (sel.bY == sel.eY) {
+        cout << lines[sel.bY].substr(sel.bX, sel.eX-sel.bX + 1);
+      } else {
+        cout << lines[sel.bY].substr(sel.bX) << "\033[1E";
+        for (int i = sel.bY + 1; i < sel.eY; i++) {
+          printf("\033[%dG", marginLeft);
+          cout << lines[i] << "\033[1E";
+        }
+        printf("\033[%dG", marginLeft);
+        cout << lines[sel.eY].substr(0, sel.eX + 1);
+      }
+      cout << "\033[0m\033[u" << flush;
+    }
+
+    void copySelection() {
+      if (selectedText.isNull()) return;
+      checkSelectionPoints(&selectedText);
+      clipboard.clear();
+
+      int startX = selectedText.bX;
+      int endX = selectedText.eX;
+      for (int i = selectedText.bY; i <= selectedText.eY; i++) {
+        int len = lines[i].length() - startX;
+        if (i == selectedText.eY) {
+          len = (endX == lines[i].length()) ? lines[i].length() - startX : endX - startX + 1;
+        }
+        clipboard.push_back(lines[i].substr(startX, len));
+        startX = 0;
+      }
+    }
+
+    void deleteSelection() {
+      if (selectedText.isNull()) return;
+      unsaved = true;
+      checkSelectionPoints(&selectedText);
+      
+      int startLine = selectedText.bY;
+      int endLine = selectedText.eY;
+      
+      if (startLine == endLine)  {
+        if (lines[startLine].length() == selectedText.eX - selectedText.bX) {
+          lines.erase(lines.begin() + startLine);
+        } else {
+          if (selectedText.eX == lines[startLine].length()) {
+            lines[startLine].erase(selectedText.bX);
+            lines[startLine].append(lines[startLine + 1]);
+            lines.erase(lines.begin() + startLine + 1);
+          } else {
+            lines[startLine].erase(selectedText.bX, selectedText.eX - selectedText.bX + 1);
+          }
+        }
+      } else {
+        int delLines = 0;
+        lines[startLine].erase(selectedText.bX);
+        if (endLine - startLine > 1) {
+          lines.erase(lines.begin() + startLine + 1, lines.begin() + endLine);
+          delLines = endLine - startLine - 1;
+        }
+
+        if (selectedText.eX == lines[endLine - delLines].length()) {
+          lines.erase(lines.begin() + endLine - delLines);
+        } else {
+          lines[endLine - delLines].erase(0, selectedText.eX + 1);
+        }
+        lines[startLine].append(lines[endLine - delLines]);
+        lines.erase(lines.begin() + endLine - delLines);
+      }
+
+      if (lines[cY].empty()) cX = 0;
+      else {
+        cX = min(selectedText.bX, static_cast<int>(lines[startLine].length()));
+      }
+      cY = selectedText.bY;
+      syncCurPosOnScr();
+      selectedText.clear();
+      updateRenderedLines(startLine);
+    }
+    
+    void checkSelectionPoints(textArea* selection) {
+      if (currentState == State::VISUAL) {
+        if (selection->eY < selection->bY || 
+            (selection->bY == selection->eY && selection->eX < selection->bX)) {
+          swap(selection->bY, selection->eY);
+          swap(selection->bX, selection->eX);
+        }
+      }
+      else if (currentState == State::VLINE) {
+        if (selection->eY < selection->bY) {
+          swap(selection->bY, selection->eY);
+          selection->bX = 0;
+          selection->eX = lines[selection->eY].length();
+        }
+      }
+    }
+
+    void pasteClipboard() {
+      if (clipboard.empty()) return;
+      unsaved = true;
+      int begY = cY;
+
+      string remain = "";
+      for (string line : clipboard) {
+        if (cX == lines[cY].length()) {
+          lines.insert(lines.begin() + cY + 1, line);
+          cY++;
+          cX = lines[cY].length();
+        }
+        else {
+          remain = lines[cY].substr(cX + 1);
+          lines[cY].erase(cX + 1);
+          lines[cY].append(line);
+          cX = lines[cY].length();
+        }
+      }
+      lines[cY].append(remain);
+      cX--;
+
+      if (cY - firstShownLine > winRows - marginTop - 2) {
+        firstShownLine = cY - winRows + marginTop + 2;
+        renderShownText(firstShownLine);
+      }
+      else if (cY == begY) {
+        updateRenderedLines(begY, 1);
+      } else {
+        updateRenderedLines(begY);
+      }
+      syncCurPosOnScr();
     }
 
     void getWinSize() {
@@ -636,7 +877,6 @@ class Lep : public ModeState {
       }
       winRows = size.ws_row;
       winCols = size.ws_col;
-      //cout << "Terminal window size: " << size.ws_col << " columns x " << size.ws_row << " rows" << endl;
     }
 
     void exitLep() {
@@ -712,6 +952,11 @@ int main(int argc, char** argv) {
 
       case State::COMMAND:
         lep.modeCommand();
+        break;
+
+      case State::VLINE:
+      case State::VISUAL:
+        lep.modeVisual();
         break;
   
       default:
