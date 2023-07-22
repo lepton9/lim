@@ -1,8 +1,4 @@
-#include <atomic>
-#include <cstddef>
-#include <cstdio>
 #include <cstdlib>
-#include <exception>
 #include <ios>
 #include <iostream>
 #include <string>
@@ -12,8 +8,7 @@
 #include <termios.h>
 #include <vector>
 #include <algorithm>
-#include <locale>
-#include <codecvt>
+#include <regex>
 #include <sys/ioctl.h>
 #include "../include/ModeState.h"
 #include "../include/stev.h"
@@ -52,6 +47,7 @@ struct textArea {
   }
 };
 
+
 class Lep : public ModeState {
   public:
     Lep() {
@@ -66,7 +62,14 @@ class Lep : public ModeState {
       int c;
       renderShownText(firstShownLine);
       updateStatBar();
+
+      if (curIsAtMaxPos()) {
+        cX = maxPosOfLine(cY);
+        syncCurPosOnScr();
+      }
+
       while(currentState == State::NORMAL) {
+        updateStatBar();
         c = readKey();
         //printf("%d ('%c')\n", c, c);
         switch (c) {
@@ -75,6 +78,20 @@ class Lep : public ModeState {
             break;
           case 'i':
             handleEvent(Event::INPUT);
+            break;
+          case 'a':
+            handleEvent(Event::INPUT);
+            curRight();
+            break;
+          case 'I':
+            handleEvent(Event::INPUT);
+            cX = minPosOfLineIWS(cY);
+            syncCurPosOnScr();
+            break;
+          case 'A':
+            handleEvent(Event::INPUT);
+            cX = maxPosOfLine(cY);
+            syncCurPosOnScr();
             break;
           case ':':
             handleEvent(Event::COMMAND);
@@ -87,6 +104,24 @@ class Lep : public ModeState {
             break;
           case 'p':
             pasteClipboard();
+            break;
+          case 'g':
+            c = readKey();
+            if (c == 'g') {
+              goToFileBegin();
+            }
+            break;
+          case 'G':
+            goToFileEnd();
+            break;
+          case 'd':
+            c = readKey();
+            if (c == 'd') {
+              delCpLine();
+            }
+            break;
+          case 'D':
+            delCpLineEnd();
             break;
 
           //Movement
@@ -145,7 +180,7 @@ class Lep : public ModeState {
       string curCom = "";
       comLineText = ":";
       updateStatBar();
-      //cout << "\033[s";
+
       while (currentState == State::COMMAND) {
         updateCommandBar();
         c = readKey();
@@ -153,7 +188,7 @@ class Lep : public ModeState {
         switch (c) {
           case 27:
             handleEvent(Event::BACK);
-            //cout << "\033[u";
+            syncCurPosOnScr();
             break;
           case 127: //Backspace
             comModeDelChar();
@@ -162,7 +197,9 @@ class Lep : public ModeState {
             if (execCommand()) {
               oldCommands.push_back(comLineText);
             }
+            comLineText = "";
             handleEvent(Event::BACK);
+            syncCurPosOnScr();
             break;
           case UP_KEY:
             if (curCom == "") curCom = comLineText;
@@ -192,6 +229,7 @@ class Lep : public ModeState {
         }
         if (comLineText.empty()) {
           handleEvent(Event::BACK);
+          syncCurPosOnScr();
         }
       }
     }
@@ -258,48 +296,20 @@ class Lep : public ModeState {
       }
     }
 
-    void readFile(string fName) {
+    void start(string fName) {
       fileName = fName;
-      fstream file(fileName);
-
-      if(file) {
-        cout << "File found" << endl;
-      }
-      else {
-        cout << "File " << fileName << " not found" << endl;
-        ofstream file(fileName);
-        cout << "File " << fileName << " created" << endl;
-        file.open(fileName, ios::in);
-      }
-
-      if (file.peek() == EOF) {
-        lines.push_back("");
-      } else {
-        string line;
-        while (getline(file, line)) {
-          lines.push_back(line);
-        }
-      }
-      file.close();
-
-      sleep(1);
-      clsResetCur();
-    }
-  
-    void overwriteFile() {
-      if (lines.empty() || (lines.size() == 1 && lines.front().empty())) {
-        unsaved = false;
-        return;
-      } 
-      ofstream file(fileName);
-      for(const string& line : lines) {
-        file << line << '\n';
-      }
-      file.close();
-      unsaved = false;
+      readFile(fileName);
     }
 
   private:
+    // Member function pointer type
+    typedef void (Lep::*functionP)(string);
+    struct func {
+        string name;
+        functionP f;
+        func(string n, functionP fp) : name(n), f(fp) {}
+    };
+
     int marginLeft = 7;
     int marginTop = 1;
     int winRows;
@@ -307,12 +317,19 @@ class Lep : public ModeState {
     int firstShownLine = 0;
     vector<string> lines;
     bool unsaved;
-    vector<char> validCommands = {'w', 'q'};
     string comLineText = "";
     vector<string> oldCommands;
     vector<string> clipboard;
     textArea selectedText;
     int cX, cY;
+
+    vector<char> validCommands = {'w', 'q', '!'};
+    vector<func> functions = {
+      func("rename", &Lep::rename), 
+      func("restart", &Lep::restart), 
+      func("set", &Lep::set), 
+      func("setconfig", &Lep::setconfig)
+    };
 
     string fileName;
     string configFilePath = "./.lepconfig";
@@ -326,8 +343,96 @@ class Lep : public ModeState {
     int sBarColorBG;
     int sBarColorFG;
 
-    void readConfig() {
+    bool readConfig() {
+      fstream* conf = openFile(configFilePath, false);
+
       if (!lineNum) marginLeft = 2;
+
+      delete conf;
+      return true;
+    }
+
+    void setconfig(string path) {
+      if (path == "") {
+        //string newPath = queryUser("Set path to \".lepconfig\": ");
+      }
+      else {
+        configFilePath = path;
+      }
+    }
+    void rename(string fName) {
+      if (fName == "") {
+        string newName = queryUser("Set a new file name: ");
+
+        if (comLineText == "") return;
+        else {
+          confirmRename(newName);
+        }
+      }
+      else {
+        confirmRename(fName);
+      }
+    }
+    void set(string var) {
+      cout << "set" << endl;
+    }
+    void restart(string p) {
+      getWinSize();
+      clsResetCur();
+      readConfig();
+      firstShownLine = 0;
+      renderShownText(firstShownLine);
+    }
+
+    void confirmRename(string newName) {
+      string ans = queryUser("Rename the file \"" + newName + "\"? [y/n]: ");
+      if (ans == "y") {
+        int result = std::rename(fileName.c_str(), newName.c_str());
+        if (result == 0) {
+          fileName = newName;
+          showMsg("File renamed to \"" + newName + "\"");
+          return;
+        }
+        else {
+          string errMsg = getPerrorString("Error renaming file");
+          showErrorMsg(errMsg);
+          return;
+        }
+      }
+      else if (ans == "n") {
+        return;
+      } else {
+        confirmRename(newName);
+        return;
+      }
+    }
+
+    string queryUser(string query) {
+      comLineText = query;
+      updateStatBar(true);
+      updateCommandBar();
+
+      string ans = "";
+      while(1) {
+        char c = readKey();
+        if (c == 27) {
+          comLineText.clear();
+          return "";
+        }
+        else if (c == 10) {
+          return ans;
+        }
+        else if (c == 127 && ans.length() > 0) {
+          comModeDelChar();
+          ans.pop_back();
+          updateCommandBar();
+        }
+        else if (!iscntrl(c) && c < 127) {
+          ans += c;
+          comLineText += c;
+          updateCommandBar();
+        }
+      }
     }
 
     void inputChar(char c) {
@@ -404,7 +509,10 @@ class Lep : public ModeState {
       int ret;
       char c;
       while ((ret = read(STDIN_FILENO, &c, 1)) != 1) {
-        if (ret == -1) return '\0';
+        if (ret == -1) {
+          showErrorMsg(getPerrorString("Error reading key"));
+          return '\0';
+        }
       }
 
       if (c == '\x1b') {
@@ -466,14 +574,14 @@ class Lep : public ModeState {
         }
         cY--;
 
-        if (lines[cY].length() < cX) {
-          printf("\033[%dD", cX - static_cast<int>(lines[cY].length()));
-          cX = lines[cY].length();
+        if (curIsAtMaxPos()) {
+          cX = maxPosOfLine(cY);
+          syncCurPosOnScr();
         }
       }
       else {
         cX = 0;
-        printf("\033[%d;%dH", cY + marginTop, cX + marginLeft);
+        syncCurPosOnScr();
       }
     }
 
@@ -489,14 +597,14 @@ class Lep : public ModeState {
         }
         cY++;
 
-        if (lines[cY].length() < cX) {
-          printf("\033[%dD", cX - static_cast<int>(lines[cY].length()));
-          cX = lines[cY].length();
+        if (curIsAtMaxPos()) {
+          cX = maxPosOfLine(cY);
+          syncCurPosOnScr();
         }
       }
       else {
-        cX = lines.back().length();
-        printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft);
+        cX = maxPosOfLine(cY);
+        syncCurPosOnScr();
       }
     }
 
@@ -515,7 +623,7 @@ class Lep : public ModeState {
           printf("\033[1A");
         }
         cY--;
-        cX = lines[cY].length();
+        cX = maxPosOfLine(cY);
         printf("\033[%dG", cX + marginLeft);
       }
     }
@@ -524,11 +632,11 @@ class Lep : public ModeState {
       if (lines.empty()) {
         return;
       }
-      if (cX < lines[cY].length()) {
+      if (!curIsAtMaxPos()) {
         cout << "\033[1C" << flush;
         cX++;
       }
-      else if (cX == lines[cY].length() && curWrap && cY < lines.size() - 1) {
+      else if (curIsAtMaxPos() && curWrap && cY < lines.size() - 1) {
         if (cY == firstShownLine + winRows - 2 - marginTop) {
           scrollDown();
         } else {
@@ -540,12 +648,111 @@ class Lep : public ModeState {
       }
     }
 
-    void clsResetCur() {
-      printf("\033[2J\033[%d;%dH", marginTop, marginLeft);
-      fflush(stdout);
+    bool is_integer(const string &s){
+        return regex_match(s, regex("[+-]?[0-9]+"));
+    }
+
+    unsigned charTOunsigned(const char * c) {
+        unsigned unsignInt = 0;
+        while (*c) {
+            unsignInt = unsignInt * 10 + (*c - '0');
+            c++;
+        }
+        return unsignInt;
+    }
+
+    int charToInt(const char * c) {
+      return (*c == '-') ? -charTOunsigned(c+ 1) : charTOunsigned(c);
+    }
+
+    void goToFileBegin() {
+      cY = 0;
+      if (curIsAtMaxPos()) {
+        cX = maxPosOfLine(cY);
+      }
+      firstShownLine = 0;
+      renderShownText(firstShownLine);
+      syncCurPosOnScr();
+    }
+
+    void goToFileEnd() {
+      cY = lines.size() - 1;
+      if (curIsAtMaxPos()) {
+        cX = maxPosOfLine(cY);
+      }
+      firstShownLine = cY - textAreaLength();
+      renderShownText(firstShownLine);
+      syncCurPosOnScr();
+    }
+
+    void goToLine(int line) {
+      if (line < 0) {
+        line = 0;
+      }
+      else if (line >= lines.size()) {
+        line = lines.size() - 1;
+      }
+      cY = line;
+      if (curIsAtMaxPos()) {
+        cX = maxPosOfLine(cY);
+      }
+      
+      if (line < firstShownLine || line > firstShownLine + textAreaLength()) {
+        int diff = firstShownLine - line;
+        if (diff > 0 && diff <= 10) {
+          firstShownLine = line;
+        }
+        else if (diff + textAreaLength() >= -10 && diff + textAreaLength() < 0) {
+          firstShownLine = line - textAreaLength();
+        }
+        else {
+          firstShownLine = line - ((textAreaLength())/2);
+          if (firstShownLine < 0){
+            firstShownLine = 0;
+          }
+          else if (firstShownLine + textAreaLength() > lines.size() - 1) {
+            firstShownLine = lines.size() - 1 - (textAreaLength());
+          }
+        }
+        renderShownText(firstShownLine);
+      }
+    }
+
+    bool checkForFunctions(string func) {
+      string f;
+      string param;
+      int spacePos = func.find(' ');
+      if (spacePos != string::npos) {
+        f = func.substr(0, spacePos);
+        param = func.substr(spacePos + 1);
+      } else {
+        f = func;
+        param = "";
+      }
+      for (const auto &function : functions) {
+        if (function.name == f) {
+          (this->*function.f)(param);
+          sleep(1);
+          return true;
+        }
+      }
+      return false;
     }
 
     bool execCommand() {
+      string com = comLineText.substr(1);
+      if (is_integer(com)) {
+        const char* clt = com.c_str();
+        int line = charToInt(clt);
+        goToLine(--line);
+        return true;
+      }
+
+      if (checkForFunctions(com)) {
+        comLineText = ':' + com;
+        return true;
+      }
+
       for(char c : comLineText) {
         if (c == ':') continue;
         if (find(validCommands.begin(), validCommands.end(), c) == validCommands.end()) {
@@ -553,19 +760,50 @@ class Lep : public ModeState {
           return false;
         }
       }
-      for(char ch : comLineText) {
-        if (ch == ':') continue;
-        else if (ch == 'w') overwriteFile();
-        else if (ch == 'q') exitLep();
+      for(int i = 0; i < comLineText.length(); i++) {
+        if (comLineText[i] == ':') continue;
+        else if (comLineText[i] == 'w') overwriteFile();
+        else if (comLineText[i] == 'q') {
+          if (i < comLineText.length() - 1 && comLineText[i + 1] == '!') {
+            exitLep(true);
+          } else {
+            exitLep(false);
+          }
+        }
       }
       if (comLineText.length() > 1) return true;
       return false;
     }
 
+    int textAreaLength() {
+      return winRows - marginTop - 2;
+    }
+
+    void showMsg(string msg) {
+      updateStatBar(true);
+      comLineText = msg;
+      updateCommandBar();
+      sleep(1);
+    }
+
     void showErrorMsg(string error) {
+      updateStatBar(true);
       comLineText = "\033[40;31m" + error + "\033[0m";
       updateCommandBar();
       sleep(1);
+    }
+
+    string getPerrorString(const string& errorMsg) {
+        stringstream ss;
+        ss << errorMsg << ": " << strerror(errno);
+        return ss.str();
+    }
+
+    void clsResetCur() {
+      cX = 0;
+      cY = 0;
+      printf("\033[2J\033[%d;%dH", marginTop, marginLeft);
+      fflush(stdout);
     }
 
     void getCurPosOnScr(int* x, int* y) {
@@ -579,6 +817,27 @@ class Lep : public ModeState {
     void syncCurPosOnScr() {
       printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft);
       fflush(stdout);
+    }
+    
+    bool curIsAtMaxPos() {
+      if (lines[cY].empty()) return true;
+      if (currentState == State::NORMAL && cX >= lines[cY].length() - 1) {
+        return true;
+      }
+      else if (cX >= lines[cY].length()) {
+        return true;
+      }
+      return false;
+    }
+
+    int maxPosOfLine(int y) {
+      if (lines[y].empty()) return 0;
+      return (currentState == State::NORMAL) ? lines[y].length() - 1 : lines[y].length();
+    }
+
+    int minPosOfLineIWS(int y) {
+      if (lines[y].empty()) return 0;
+      return lines[y].find_first_not_of(' ');
     }
 
     void scrollUp() {
@@ -642,9 +901,9 @@ class Lep : public ModeState {
       printf("\033[%d;0H", marginTop + startLine - firstShownLine);
       if (count < 0) count = lines.size();
 
-      int maxIter = min(winRows - marginTop - 2 - (startLine - firstShownLine)
-          , winRows - marginTop - 2 + 1);
-      int maxIterWithOffset = min(maxIter, winRows - marginTop - 2 - (startLine - firstShownLine));
+      int maxIter = min(textAreaLength() - (startLine - firstShownLine)
+          , textAreaLength() + 1);
+      int maxIterWithOffset = min(maxIter, textAreaLength() - (startLine - firstShownLine));
 
       for (int i = startLine; i < lines.size() && i <= startLine + maxIterWithOffset 
           && i - startLine < count; i++) {
@@ -665,8 +924,8 @@ class Lep : public ModeState {
         printf("\033[%dG", marginLeft);
         cout << lines[i] << "\033[1E";
       }
-      if (lines.size() < winRows - marginTop - 2) {
-        for (int i = 0; i <= winRows - marginTop - 2 - lines.size(); i++) {
+      if (lines.size() < textAreaLength()) {
+        for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
           printf("\033[40;34m\033[2K\033[%dG~\033[1E", marginLeft);
         }
         cout << "\033[0m";
@@ -675,10 +934,13 @@ class Lep : public ModeState {
       updateLineNums(startLine);
     }
 
-    void updateStatBar() {
+    void updateStatBar(bool showCommandLine = false) {
       cout << "\033[s"; // Save cursor pos
       printf("\033[%d;0H\033[2K\r", winRows - 1);
-      if (currentState != State::COMMAND) {
+      if (currentState == State::COMMAND) {
+        showCommandLine = true;
+      }
+      if (!showCommandLine) {
         printf("\033[%d;0H", winRows); // Move cursor to the last line
       }
       cout << "\033[2K\r"; // Clear current line
@@ -704,11 +966,12 @@ class Lep : public ModeState {
     }
 
     void updateCommandBar() {
-      cout << "\033[s"; // Save cursor pos
+      //cout << "\033[s"; // Save cursor pos
       printf("\033[%d;1H", winRows); // Move cursor to the last line
       cout << "\033[2K\r"; // Clear current line
       cout << " " << comLineText;
-      cout << "\033[0m\033[u" << flush;
+      cout << "\033[0m" << flush;
+      //cout << "\033[u" << flush;
     }
 
     void updateSelectedText() {
@@ -731,8 +994,8 @@ class Lep : public ModeState {
         sel.bY = firstShownLine;
         sel.bX = 0;
       }
-      if (sel.eY > firstShownLine + winRows - marginTop - 2) {
-        sel.eY = firstShownLine + winRows - marginTop - 2;
+      if (sel.eY > firstShownLine + textAreaLength()) {
+        sel.eY = firstShownLine + textAreaLength();
         sel.eX = lines[sel.eY].length();
       }
 
@@ -835,6 +1098,30 @@ class Lep : public ModeState {
       }
     }
 
+    void delCpLine() {
+      unsaved = true;
+      clipboard.clear();
+      clipboard.push_back(lines[cY]);
+      lines.erase(lines.begin() + cY);
+      updateRenderedLines(cY);
+      if (curIsAtMaxPos()) {
+        cX = maxPosOfLine(cY);
+        syncCurPosOnScr();
+      }
+    }
+
+    void delCpLineEnd() {
+      unsaved = true;
+      clipboard.clear();
+      clipboard.push_back(lines[cY].substr(cX));
+      lines[cY].erase(cX);
+      updateRenderedLines(cY, 1);
+      if (cX > 0) {
+        cX--;
+        syncCurPosOnScr();
+      }
+    }
+
     void pasteClipboard() {
       if (clipboard.empty()) return;
       unsaved = true;
@@ -842,22 +1129,25 @@ class Lep : public ModeState {
 
       string remain = "";
       for (string line : clipboard) {
-        if (cX == lines[cY].length()) {
+        if (lines[cY].empty()) {
+          lines[cY] = line;
+          cX = (line == "") ? 0 : maxPosOfLine(cY);
+        }
+        else if (curIsAtMaxPos()) {
           lines.insert(lines.begin() + cY + 1, line);
           cY++;
-          cX = lines[cY].length();
+          cX = maxPosOfLine(cY);
         }
         else {
           remain = lines[cY].substr(cX + 1);
           lines[cY].erase(cX + 1);
           lines[cY].append(line);
-          cX = lines[cY].length();
+          cX = maxPosOfLine(cY);
         }
       }
       lines[cY].append(remain);
-      cX--;
 
-      if (cY - firstShownLine > winRows - marginTop - 2) {
+      if (cY - firstShownLine > textAreaLength()) {
         firstShownLine = cY - winRows + marginTop + 2;
         renderShownText(firstShownLine);
       }
@@ -872,43 +1162,71 @@ class Lep : public ModeState {
     void getWinSize() {
       struct winsize size;
       if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1) {
-          cerr << "Failed to get terminal window size" << endl;
-          return;
+        showErrorMsg(getPerrorString("Failed to get terminal window size"));
+        return;
       }
       winRows = size.ws_row;
       winCols = size.ws_col;
     }
 
-    void exitLep() {
-      if (unsaved) {
-        comLineText = "Unsaved changes. Save changes [y/n]:";
-        updateStatBar();
-        updateCommandBar();
-        string ans = "";
+    fstream* openFile(string fName, bool createIfNotFound) {
+      fstream* file = new fstream(fileName);
+
+      if(file->is_open()){
+        showMsg("File \"" + fileName + "\" found");
+      }
+      else if (createIfNotFound) {
+        ofstream* file = new ofstream(fileName);
+        showErrorMsg("File \"" + fileName + "\" created");
+        file->open(fileName, ios::in);
+      }
+
+      return file;
+    }
+
+    void readFile(string fName) {
+      fileName = fName;
+      fstream* fptr = openFile(fileName, true);
+      readToLines(fptr);
+      delete fptr;
+      syncCurPosOnScr();
+    }
+
+    void readToLines(fstream *file) {
+      lines.clear();
+      if (file->peek() == EOF) {
+        lines.push_back("");
+      } else {
+        string line;
+        while (getline(*file, line)) {
+          lines.push_back(line);
+        }
+      }
+    }
+  
+    void overwriteFile() {
+      if (lines.empty() || (lines.size() == 1 && lines.front().empty())) {
+        unsaved = false;
+        return;
+      } 
+      ofstream file(fileName);
+      for(const string& line : lines) {
+        file << line << '\n';
+      }
+      file.close();
+      unsaved = false;
+    }
+
+    void exitLep(bool force) {
+      if (unsaved && !force) {
         while(1) {
-          char c = readKey();
-          if (c == 10) {
-            if (ans == "y") {
-              overwriteFile();
-              break;
-            }
-            else if (ans == "n") break;
+          string ans = queryUser("Unsaved changes. Save changes [y/n]:");
+          if (ans == "y") {
+            overwriteFile();
+            break;
           }
-          else if (c == 127 && ans.length() > 0) {
-            comModeDelChar();
-            ans.pop_back();
-            updateCommandBar();
-          }
-          else if (c == 27) {
-            comLineText.clear();
-            handleEvent(Event::BACK);
-            return;
-          }
-          else if (!iscntrl(c) && c < 127) {
-            ans += c;
-            comLineText += c;
-            updateCommandBar();
-          }
+          else if (ans == "n") break;
+          else if (ans == "" && comLineText.empty()) return;
         }
       }
       system("clear");
@@ -942,7 +1260,7 @@ int main(int argc, char** argv) {
   }
 
   Lep lep;
-  lep.readFile(fileName);
+  lep.start(fileName);
 
   while(1) {
     switch (lep.currentState) {
