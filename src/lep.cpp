@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <ios>
 #include <iostream>
-#include <string>
+#include <cstring>
 #include <unistd.h>
 #include <stdlib.h> 
 #include <fstream>
@@ -12,6 +12,8 @@
 #include <sys/ioctl.h>
 #include "../include/ModeState.h"
 #include "../include/stev.h"
+#include "../include/Clipboard.h"
+#include "../include/Clip.h"
 //#include <conio.h>
 
 using namespace std;
@@ -59,7 +61,7 @@ class Lep : public ModeState {
     }
 
     void modeNormal() {
-      int c;
+      getWinSize();
       renderShownText(firstShownLine);
       updateStatBar();
 
@@ -68,6 +70,7 @@ class Lep : public ModeState {
         syncCurPosOnScr();
       }
 
+      int c;
       while(currentState == State::NORMAL) {
         updateStatBar();
         c = readKey();
@@ -81,7 +84,7 @@ class Lep : public ModeState {
             break;
           case 'a':
             handleEvent(Event::INPUT);
-            curRight();
+            if (!curIsAtMaxPos()) curRight();
             break;
           case 'I':
             handleEvent(Event::INPUT);
@@ -123,6 +126,25 @@ class Lep : public ModeState {
           case 'D':
             delCpLineEnd();
             break;
+          case 'y':
+            c = readKey();
+            if (c == 'y') {
+              cpLine();
+            }
+            break;
+          case 'Y':
+            cpLineEnd();
+            break;
+          case 14: // C-n
+            // Show file tree
+            break;
+          case 16: // C-p
+            c = readKey();
+            if (isdigit(c)) {
+              int d = c - 48; // 48 => 0
+              //Paste cliboard[(d - 1 < 0) ? 9 : d - 1]
+            }
+            break;
 
           //Movement
           case 'h': case 'j': case 'k': case 'l':
@@ -134,6 +156,7 @@ class Lep : public ModeState {
     }
 
     void modeInput() {
+      getWinSize();
       int c;
       while (currentState == State::INPUT) {
         updateStatBar();
@@ -248,6 +271,7 @@ class Lep : public ModeState {
         selectedText.eY = cY;
       }
 
+      getWinSize();
       updateStatBar();
       int c;
       while (currentState == State::VISUAL || currentState == State::VLINE) {
@@ -509,6 +533,7 @@ class Lep : public ModeState {
       int ret;
       char c;
       while ((ret = read(STDIN_FILENO, &c, 1)) != 1) {
+        getWinSize();
         if (ret == -1) {
           showErrorMsg(getPerrorString("Error reading key"));
           return '\0';
@@ -680,7 +705,7 @@ class Lep : public ModeState {
       if (curIsAtMaxPos()) {
         cX = maxPosOfLine(cY);
       }
-      firstShownLine = cY - textAreaLength();
+      firstShownLine = (cY < textAreaLength()) ? 0 : cY - textAreaLength();
       renderShownText(firstShownLine);
       syncCurPosOnScr();
     }
@@ -896,6 +921,15 @@ class Lep : public ModeState {
       }
     }
 
+    void fillEmptyLines() {
+      if (lines.size() < textAreaLength()) {
+        for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
+          printf("\033[40;34m\033[2K\033[%dG%s\033[1E", 0, alignR("~", lineNumPad).c_str());
+        }
+        cout << "\033[0m";
+      }
+    }
+
     void updateRenderedLines(int startLine, int count = -1) {
       cout << "\033[s";
       printf("\033[%d;0H", marginTop + startLine - firstShownLine);
@@ -912,6 +946,7 @@ class Lep : public ModeState {
         printf("\033[%dG", marginLeft);
         cout << lines[i] << "\033[1E";
       }
+      fillEmptyLines();
       cout << "\033[u" << flush;
       if (relativenumber) updateLineNums(firstShownLine);
     }
@@ -919,17 +954,12 @@ class Lep : public ModeState {
     void renderShownText(int startLine) {
       cout << "\033[s";
       printf("\033[%d;1H", marginTop);
-      for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
+      for(int i = startLine; i < lines.size() && i <= textAreaLength() + startLine; i++) {
         cout << "\033[2K";
         printf("\033[%dG", marginLeft);
         cout << lines[i] << "\033[1E";
       }
-      if (lines.size() < textAreaLength()) {
-        for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
-          printf("\033[40;34m\033[2K\033[%dG~\033[1E", marginLeft);
-        }
-        cout << "\033[0m";
-      }
+      fillEmptyLines();
       cout << "\033[u" << flush;
       updateLineNums(startLine);
     }
@@ -957,21 +987,25 @@ class Lep : public ModeState {
       else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
       string eInfo = mode + " | " + fileName + " " + saveStatus;
       string curInfo = to_string(cY + 1) + ", " + to_string(cX + 1) + " ";
-      cout << eInfo;
      
       int fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+
+      if (fillerSpace < 0) {
+        eInfo = mode + " | " + saveStatus;
+        fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+        fillerSpace = (fillerSpace < 0) ? 0 : fillerSpace;
+      }
+
+      cout << eInfo;
       cout << string(fillerSpace, ' ') << curInfo;
-      // Restore text color and cursor pos
       cout << "\033[0m\033[u" << flush;
     }
 
     void updateCommandBar() {
-      //cout << "\033[s"; // Save cursor pos
       printf("\033[%d;1H", winRows); // Move cursor to the last line
       cout << "\033[2K\r"; // Clear current line
       cout << " " << comLineText;
       cout << "\033[0m" << flush;
-      //cout << "\033[u" << flush;
     }
 
     void updateSelectedText() {
@@ -1098,10 +1132,19 @@ class Lep : public ModeState {
       }
     }
 
-    void delCpLine() {
-      unsaved = true;
+    void cpLine() {
       clipboard.clear();
       clipboard.push_back(lines[cY]);
+    }
+
+    void cpLineEnd() {
+      clipboard.clear();
+      clipboard.push_back(lines[cY].substr(cX));
+    }
+
+    void delCpLine() {
+      unsaved = true;
+      cpLine();
       lines.erase(lines.begin() + cY);
       updateRenderedLines(cY);
       if (curIsAtMaxPos()) {
@@ -1112,8 +1155,7 @@ class Lep : public ModeState {
 
     void delCpLineEnd() {
       unsaved = true;
-      clipboard.clear();
-      clipboard.push_back(lines[cY].substr(cX));
+      cpLineEnd();
       lines[cY].erase(cX);
       updateRenderedLines(cY, 1);
       if (cX > 0) {
@@ -1165,8 +1207,12 @@ class Lep : public ModeState {
         showErrorMsg(getPerrorString("Failed to get terminal window size"));
         return;
       }
-      winRows = size.ws_row;
-      winCols = size.ws_col;
+      if (size.ws_row != winRows || size.ws_col != winCols) {
+        winRows = size.ws_row;
+        winCols = size.ws_col;
+        renderShownText(firstShownLine);
+        updateStatBar();
+      }
     }
 
     fstream* openFile(string fName, bool createIfNotFound) {

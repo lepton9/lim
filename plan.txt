@@ -1,16 +1,16 @@
 DONE:
 
 TODO:
-
-- clipboard object and store old copyed text to use later
+- C-p # paste clipboard at index
+- clipboard object and store old copied text to use later
   - boolean isLine
     - show if clipboard is only length 1 and copied text is a full line and not part of line
       - then when pasting and cX is at max position insert it on new line
       - else if it is not a line append it to the current line end
+- when winCols < line.length() extend the line o next line and move line numbering
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written
 - set a time to show a command box info text and not sleep(1) and pause the program
-- update winsize when it changes
 - file tree to the side crtl + n
   - ability to open files
   - create new files
@@ -22,9 +22,6 @@ TODO:
   - modify the config file with set
 - maybe make winRows change by 1 when showing or not showing the command line box
   - or make the command box be always visible
-- only render the whole text again when
-  - window size changes
-  - scrolling
 
 - config file
   - read the file when opening the editor
