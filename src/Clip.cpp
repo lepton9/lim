@@ -1,5 +1,15 @@
 #include "../include/Clip.h"
 
-Clip::Clip(bool line) {
-  isLine = line;
+Clip::Clip() {
+  line = false;
+}
+
+Clip::Clip(bool line) : line(line) {}
+
+void Clip::lineTrue() {
+  line = true;
+}
+
+bool Clip::isLine() {
+  return line;
 }

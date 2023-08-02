@@ -6,9 +6,12 @@
 
 class Clip : public std::vector<std::string> {
   public:
+    Clip();
     Clip(bool line);
+    void lineTrue();
+    bool isLine();
   private:
-    bool isLine;
+    bool line;
 };
 
 #endif

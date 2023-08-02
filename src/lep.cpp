@@ -1,7 +1,9 @@
 #include <cstdlib>
+#include <future>
 #include <ios>
 #include <iostream>
 #include <cstring>
+#include <string>
 #include <unistd.h>
 #include <stdlib.h> 
 #include <fstream>
@@ -14,6 +16,7 @@
 #include "../include/stev.h"
 #include "../include/Clipboard.h"
 #include "../include/Clip.h"
+#include "../include/Config.h"
 //#include <conio.h>
 
 using namespace std;
@@ -142,7 +145,7 @@ class Lep : public ModeState {
             c = readKey();
             if (isdigit(c)) {
               int d = c - 48; // 48 => 0
-              //Paste cliboard[(d - 1 < 0) ? 9 : d - 1]
+              pasteClipboard((d - 1 < 0) ? 9 : d - 1);
             }
             break;
 
@@ -336,6 +339,7 @@ class Lep : public ModeState {
 
     int marginLeft = 7;
     int marginTop = 1;
+    int lineNumPad = 3;
     int winRows;
     int winCols;
     int firstShownLine = 0;
@@ -343,7 +347,7 @@ class Lep : public ModeState {
     bool unsaved;
     string comLineText = "";
     vector<string> oldCommands;
-    vector<string> clipboard;
+    Clipboard clipboard;
     textArea selectedText;
     int cX, cY;
 
@@ -356,39 +360,47 @@ class Lep : public ModeState {
     };
 
     string fileName;
-    string configFilePath = "./.lepconfig";
 
-    //Config
-    int indentAm = 2;
-    bool curWrap = true;
-    int lineNumPad = 3;
-    bool lineNum = true;
-    bool relativenumber = false;
-    int sBarColorBG;
-    int sBarColorFG;
+    Config config;
 
     bool readConfig() {
-      fstream* conf = openFile(configFilePath, false);
+      config.parse();
 
-      if (!lineNum) marginLeft = 2;
+      updateVariables();
 
-      delete conf;
       return true;
     }
 
+    void updateVariables() {
+      if (config.lineNum) marginLeft = 7;
+      else marginLeft = 2;
+    }
+
     void setconfig(string path) {
+      string newPath;
+      bool success = false;
       if (path == "") {
-        //string newPath = queryUser("Set path to \".lepconfig\": ");
+        newPath = queryUser("Set path to \".lepconfig\": ");
+        if (newPath == "") return;
       }
       else {
-        configFilePath = path;
+        newPath = path;
+      }
+      success = config.setFilePath(newPath);
+      if (success) {
+        showMsg("Path set to " + newPath);
+        updateVariables();
+        renderShownText(firstShownLine);
+      } else {
+        showErrorMsg("Not a valid path " + newPath);
       }
     }
+
     void rename(string fName) {
       if (fName == "") {
         string newName = queryUser("Set a new file name: ");
 
-        if (comLineText == "") return;
+        if (newName == "") return;
         else {
           confirmRename(newName);
         }
@@ -397,9 +409,22 @@ class Lep : public ModeState {
         confirmRename(fName);
       }
     }
+
     void set(string var) {
-      cout << "set" << endl;
+      if (var == "") {
+        return;
+      }
+      bool success = config.set(var);
+      if (success) {
+        updateVariables();
+        renderShownText(firstShownLine);
+        showMsg("Updated " + var);
+      }
+      else {
+        showErrorMsg("Unknown option: " + var);
+      }
     }
+
     void restart(string p) {
       getWinSize();
       clsResetCur();
@@ -483,9 +508,9 @@ class Lep : public ModeState {
     }
 
     void tabKey() {
-      lines[cY].insert(cX, string(indentAm, ' '));
-      cX += indentAm;
-      printf("\033[%dC", indentAm);
+      lines[cY].insert(cX, string(config.indentAm, ' '));
+      cX += config.indentAm;
+      printf("\033[%dC", config.indentAm);
       fflush(stdout);
       updateRenderedLines(cY, 1);
     }
@@ -641,7 +666,7 @@ class Lep : public ModeState {
         cout << "\033[1D" << flush;
         cX--;
       }
-      else if (cX == 0 && curWrap && cY != 0) {
+      else if (cX == 0 && config.curWrap && cY != 0) {
         if (cY == firstShownLine) {
           scrollUp();
         } else {
@@ -661,7 +686,7 @@ class Lep : public ModeState {
         cout << "\033[1C" << flush;
         cX++;
       }
-      else if (curIsAtMaxPos() && curWrap && cY < lines.size() - 1) {
+      else if (curIsAtMaxPos() && config.curWrap && cY < lines.size() - 1) {
         if (cY == firstShownLine + winRows - 2 - marginTop) {
           scrollDown();
         } else {
@@ -805,17 +830,17 @@ class Lep : public ModeState {
     }
 
     void showMsg(string msg) {
-      updateStatBar(true);
+      if (!config.comline_visible) updateStatBar(true);
       comLineText = msg;
       updateCommandBar();
-      sleep(1);
+      if (!config.comline_visible) sleep(1);
     }
 
     void showErrorMsg(string error) {
-      updateStatBar(true);
+      if (!config.comline_visible) updateStatBar(true);
       comLineText = "\033[40;31m" + error + "\033[0m";
       updateCommandBar();
-      sleep(1);
+      if (!config.comline_visible) sleep(1);
     }
 
     string getPerrorString(const string& errorMsg) {
@@ -885,9 +910,9 @@ class Lep : public ModeState {
     }
 
     string showLineNum(int lNum) {
-      if (lineNum) {
+      if (config.lineNum) {
         string strLNum = to_string(lNum);
-        if (relativenumber) {
+        if (config.relativenumber) {
           if (lNum == 0) {
             checkLineNumSpace(to_string(cY+1));
             return "\033[0G\033[97m" + alignR(to_string(cY+1), lineNumPad) + "\033[0m"; // White highlight
@@ -904,10 +929,10 @@ class Lep : public ModeState {
     }
 
     void updateLineNums(int startLine) {
-      if (lineNum) {
+      if (config.lineNum) {
         cout << "\033[s";
         printf("\033[%d;0H", marginTop + startLine - firstShownLine);
-        if (relativenumber) {
+        if (config.relativenumber) {
           for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
             cout << showLineNum(abs(cY-i)) << "\033[1E";
           }
@@ -930,6 +955,17 @@ class Lep : public ModeState {
       }
     }
 
+    void printLine(int i) {
+      printf("\033[%dG", marginLeft);
+      if (lines[i].length() > winCols - marginLeft) {
+        cout << lines[i].substr(0, winCols - marginLeft) << "\033[1E";
+        //cout << lines[i].substr(winCols - marginLeft) << "\033[1E";
+      }
+      else {
+        cout << lines[i] << "\033[1E";
+      }
+    }
+
     void updateRenderedLines(int startLine, int count = -1) {
       cout << "\033[s";
       printf("\033[%d;0H", marginTop + startLine - firstShownLine);
@@ -942,13 +978,13 @@ class Lep : public ModeState {
       for (int i = startLine; i < lines.size() && i <= startLine + maxIterWithOffset 
           && i - startLine < count; i++) {
         cout << "\033[2K";
-        if (!relativenumber) cout << showLineNum(i + 1);
-        printf("\033[%dG", marginLeft);
-        cout << lines[i] << "\033[1E";
+        if (!config.relativenumber) cout << showLineNum(i + 1);
+        printLine(i);
       }
-      fillEmptyLines();
+      if (count == lines.size()) fillEmptyLines();
+      
       cout << "\033[u" << flush;
-      if (relativenumber) updateLineNums(firstShownLine);
+      if (config.relativenumber) updateLineNums(firstShownLine);
     }
 
     void renderShownText(int startLine) {
@@ -956,8 +992,7 @@ class Lep : public ModeState {
       printf("\033[%d;1H", marginTop);
       for(int i = startLine; i < lines.size() && i <= textAreaLength() + startLine; i++) {
         cout << "\033[2K";
-        printf("\033[%dG", marginLeft);
-        cout << lines[i] << "\033[1E";
+        printLine(i);
       }
       fillEmptyLines();
       cout << "\033[u" << flush;
@@ -967,7 +1002,7 @@ class Lep : public ModeState {
     void updateStatBar(bool showCommandLine = false) {
       cout << "\033[s"; // Save cursor pos
       printf("\033[%d;0H\033[2K\r", winRows - 1);
-      if (currentState == State::COMMAND) {
+      if (currentState == State::COMMAND || config.comline_visible) {
         showCommandLine = true;
       }
       if (!showCommandLine) {
@@ -1054,8 +1089,8 @@ class Lep : public ModeState {
     void copySelection() {
       if (selectedText.isNull()) return;
       checkSelectionPoints(&selectedText);
-      clipboard.clear();
 
+      Clip clip;
       int startX = selectedText.bX;
       int endX = selectedText.eX;
       for (int i = selectedText.bY; i <= selectedText.eY; i++) {
@@ -1063,9 +1098,14 @@ class Lep : public ModeState {
         if (i == selectedText.eY) {
           len = (endX == lines[i].length()) ? lines[i].length() - startX : endX - startX + 1;
         }
-        clipboard.push_back(lines[i].substr(startX, len));
+        clip.push_back(lines[i].substr(startX, len));
         startX = 0;
       }
+      if (clip.size() == 1 && clip.front().length() == lines[selectedText.bY].length() 
+          && selectedText.eX == lines[selectedText.bY].length()) {
+        clip.lineTrue();
+      }
+      clipboard.copyClip(clip);
     }
 
     void deleteSelection() {
@@ -1133,13 +1173,15 @@ class Lep : public ModeState {
     }
 
     void cpLine() {
-      clipboard.clear();
-      clipboard.push_back(lines[cY]);
+      Clip clip(true);
+      clip.push_back(lines[cY]);
+      clipboard.push_back(clip);
     }
 
     void cpLineEnd() {
-      clipboard.clear();
-      clipboard.push_back(lines[cY].substr(cX));
+      Clip clip;
+      clip.push_back(lines[cY].substr(cX));
+      clipboard.push_back(clip);
     }
 
     void delCpLine() {
@@ -1164,16 +1206,23 @@ class Lep : public ModeState {
       }
     }
 
-    void pasteClipboard() {
+    void pasteClipboard(int i = -1) {
       if (clipboard.empty()) return;
+      if (i > 0 && i >= clipboard.size()) return;
       unsaved = true;
       int begY = cY;
 
       string remain = "";
-      for (string line : clipboard) {
+      Clip* clip = (i < 0) ? &clipboard[clipboard.size()-1] : &clipboard[i];
+      for (string line : *clip) {
         if (lines[cY].empty()) {
           lines[cY] = line;
           cX = (line == "") ? 0 : maxPosOfLine(cY);
+        }
+        else if (clip->isLine()) {
+          lines.insert(lines.begin() + cY + 1, line);
+          cY++;
+          cX = minPosOfLineIWS(cY);
         }
         else if (curIsAtMaxPos()) {
           lines.insert(lines.begin() + cY + 1, line);
@@ -1259,8 +1308,11 @@ class Lep : public ModeState {
       for(const string& line : lines) {
         file << line << '\n';
       }
-      file.close();
       unsaved = false;
+      string clt = comLineText;
+      showMsg("\"" + fileName + "\" " + to_string(lines.size()) + "L, " + to_string(file.tellp()) + "B written");
+      comLineText = clt;
+      file.close();
     }
 
     void exitLep(bool force) {

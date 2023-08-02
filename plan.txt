@@ -1,12 +1,6 @@
 DONE:
 
 TODO:
-- C-p # paste clipboard at index
-- clipboard object and store old copied text to use later
-  - boolean isLine
-    - show if clipboard is only length 1 and copied text is a full line and not part of line
-      - then when pasting and cX is at max position insert it on new line
-      - else if it is not a line append it to the current line end
 - when winCols < line.length() extend the line o next line and move line numbering
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written
@@ -18,19 +12,9 @@ TODO:
   - :! for bash commands
   - w, e, b to move over word
   - / to search for instances of a keyword
-  - set config file path
-  - modify the config file with set
 - maybe make winRows change by 1 when showing or not showing the command line box
   - or make the command box be always visible
-
-- config file
-  - read the file when opening the editor
-  - syntax highlighting
-  - indent amount
-  - theme
-    - background color
-    - text color
-  - set line numbers
+- syntax highlighting
 
 - unicode support
   - if char < 0 move cursor only by one
