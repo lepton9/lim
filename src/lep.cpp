@@ -1,11 +1,8 @@
-#include <cstdlib>
-#include <future>
-#include <ios>
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <type_traits>
 #include <unistd.h>
-#include <stdlib.h> 
 #include <fstream>
 #include <termios.h>
 #include <vector>
@@ -110,6 +107,18 @@ class Lep : public ModeState {
             break;
           case 'p':
             pasteClipboard();
+            break;
+          case 'W': // Beginning of next word
+          case 'w':
+            gotoBegOfNext();
+            break;
+          case 'E': // End of current word or next if at end of word
+          case 'e':
+            gotoEndOfNext();
+            break;
+          case 'B': // Beginning of last word
+          case 'b':
+            gotoBegOfLast();
             break;
           case 'g':
             c = readKey();
@@ -715,6 +724,96 @@ class Lep : public ModeState {
       return (*c == '-') ? -charTOunsigned(c+ 1) : charTOunsigned(c);
     }
 
+    void gotoBegOfNext() {
+      if (curIsAtMaxPos() && cY == lines.size() - 1) return;
+
+      string sc = ";:(){}[]\"";
+      int x = cX;
+      for (int i = 1; i < lines[cY].length() - cX; i++) {
+        char c = lines[cY][cX + i];
+        if (sc.find(c) != string::npos && sc.find(lines[cY][cX]) == string::npos) {
+          cX += i;
+          break;
+        }
+        else if (c == ' ') {
+          cX += i + 1;
+          break;
+        }
+        else if (sc.find(c) == string::npos && sc.find(lines[cY][cX]) != string::npos) {
+          cX += i;
+          break;
+        }
+      }
+      if (lines[cY][cX] == ' ') {
+        gotoBegOfNext();
+        return;
+      }
+      if (cX == x) {
+        cY++;
+        cX = minPosOfLineIWS(cY);
+      }
+      syncCurPosOnScr();
+    }
+
+    void gotoEndOfNext() {
+      if (curIsAtMaxPos() && cY == lines.size() - 1) return;
+
+      string sc = ";:(){}[]\"";
+      int x = cX;
+      for (int i = 1; i < lines[cY].length() - cX; i++) {
+        if (cX + i >= lines[cY].size()) {
+          return;
+        }
+        char cn = lines[cY][cX + i + 1];
+        if (cn == ' ') {
+          cX += i;
+          break;
+        }
+        else if (sc.find(cn) != string::npos && sc.find(lines[cY][cX]) == string::npos || cX + i == lines[cY].size() - 1) {
+          cX += i;
+          break;
+        }
+        else if (sc.find(cn) == string::npos && sc.find(lines[cY][cX]) != string::npos || cX + i == lines[cY].size() - 1) {
+          cX += i;
+          break;
+        }
+      }
+      if (lines[cY][cX] == ' ') {
+        gotoEndOfNext();
+        return;
+      }
+      if (cX == x) {
+        cY++;
+        cX = minPosOfLineIWS(cY);
+        gotoEndOfNext();
+        return;
+      }
+      syncCurPosOnScr();
+    }
+
+    void gotoBegOfLast() {
+      if (cY == 0 && cX == 0) return;
+
+      string sc = ";:(){}[]\"";
+      int x = cX;
+      for (int i = 1; i <= cX; i++) {
+        char cl = lines[cY][cX - i];
+        if ((cl == ' ' || sc.find(cl) != string::npos) && i > 1) {
+          cX -= i - 1;
+          break;
+        }
+      }
+      if (cX < minPosOfLineIWS(cY) && cY != 0) {
+        cY--;
+        cX = maxPosOfLine(cY);
+      }
+      else if (cX == x && cY == 0) {
+        cX = minPosOfLineIWS(cY);
+      }
+
+      syncCurPosOnScr();
+    }
+
     void goToFileBegin() {
       cY = 0;
       if (curIsAtMaxPos()) {
@@ -886,7 +985,7 @@ class Lep : public ModeState {
     }
 
     int minPosOfLineIWS(int y) {
-      if (lines[y].empty()) return 0;
+      if (lines[y].empty() || lines[y].find_first_not_of(' ') == string::npos) return 0;
       return lines[y].find_first_not_of(' ');
     }
 

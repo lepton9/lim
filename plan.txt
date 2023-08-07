@@ -10,7 +10,6 @@ TODO:
   - create new files
 - commands
   - :! for bash commands
-  - w, e, b to move over word
   - / to search for instances of a keyword
 - maybe make winRows change by 1 when showing or not showing the command line box
   - or make the command box be always visible
