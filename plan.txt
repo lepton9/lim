@@ -8,9 +8,6 @@ TODO:
 - file tree to the side crtl + n
   - ability to open files
   - create new files
-- commands
-  - :! for bash commands
-  - / to search for instances of a keyword
 - maybe make winRows change by 1 when showing or not showing the command line box
   - or make the command box be always visible
 - syntax highlighting

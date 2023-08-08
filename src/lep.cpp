@@ -1,7 +1,5 @@
 #include <iostream>
 #include <cstring>
-#include <string>
-#include <type_traits>
 #include <unistd.h>
 #include <fstream>
 #include <termios.h>
@@ -27,6 +25,10 @@ enum sKey {
   RIGHT_KEY,
   DOWN_KEY,
   DEL_KEY,
+};
+
+struct pos {
+  int x, y;
 };
 
 struct textArea {
@@ -77,6 +79,9 @@ class Lep : public ModeState {
         //printf("%d ('%c')\n", c, c);
         switch (c) {
           case 27:
+            if (matchesHighlighted()) {
+              resetMatchSearch();
+            }
             handleEvent(Event::BACK);
             break;
           case 'i':
@@ -98,6 +103,28 @@ class Lep : public ModeState {
             break;
           case ':':
             handleEvent(Event::COMMAND);
+            break;
+          case '!':
+            handleEvent(Event::COMMAND);
+            comLineText = ":!";
+            execBashCommand();
+            restart("");
+            handleEvent(Event::BACK);
+            break;
+          case '/':
+            handleEvent(Event::COMMAND);
+            search();
+            handleEvent(Event::BACK);
+            break;
+          case 'n':
+            if (matchesHighlighted()) {
+              gotoNextMatch();
+            }
+            break;
+          case 'N':
+            if (matchesHighlighted()) {
+              gotoLastMatch();
+            }
             break;
           case 'v':
             handleEvent(Event::VISUAL);
@@ -150,7 +177,7 @@ class Lep : public ModeState {
           case 14: // C-n
             // Show file tree
             break;
-          case 16: // C-p
+          case 16: // C-p + #, paste from clipboard at index #
             c = readKey();
             if (isdigit(c)) {
               int d = c - 48; // 48 => 0
@@ -354,6 +381,10 @@ class Lep : public ModeState {
     int firstShownLine = 0;
     vector<string> lines;
     bool unsaved;
+    string searchStr;
+    vector<pos> matches;
+    int curMatch = 0;
+
     string comLineText = "";
     vector<string> oldCommands;
     Clipboard clipboard;
@@ -867,6 +898,92 @@ class Lep : public ModeState {
       }
     }
 
+    void search() {
+      resetMatchSearch();
+      searchStr = queryUser("/");
+      if (searchStr == "") {
+        comLineText = "";
+        syncCurPosOnScr();
+        return;
+      }
+      if (searchForMatches() > 0) {
+        gotoNextMatch();
+        highlightMatches();
+      }
+      else {
+        showErrorMsg("No match found: " + searchStr);
+        syncCurPosOnScr();
+      }
+    }
+
+    int searchForMatches() {
+      for (int yp = 0; yp < lines.size(); yp++) {
+        int xp = lines[yp].find(searchStr);
+        while (xp != std::string::npos) {
+          matches.push_back({xp, yp});
+          xp = lines[yp].find(searchStr, xp + 1);
+        }
+      }
+      return matches.size();
+    }
+
+    void highlightMatches() {
+      if (matches.empty()) return;
+      cout << "\033[s";
+      for (int i = 0; i < matches.size(); i++) {
+        if (matches[i].y < firstShownLine) continue;
+        else if (matches[i].y > firstShownLine + textAreaLength()) break;
+        else {
+          printf("\033[%d;%dH", matches[i].y - firstShownLine + marginTop, matches[i].x + marginLeft);
+          cout << "\033[7m" << searchStr << "\033[0m";
+        }
+      }
+      cout << "\033[u" << flush;
+    }
+
+    void gotoNextMatch() {
+      if (matches.empty()) return;
+      if (curMatch >= matches.size() - 1) {
+        curMatch = 0;
+      } else {
+        curMatch++;
+      }
+      gotoMatch();
+    }
+
+    void gotoLastMatch() {
+      if (matches.empty()) return;
+      if (curMatch <= 0) {
+        curMatch = matches.size() - 1;
+      } else {
+        curMatch--;
+      }
+      gotoMatch();
+    }
+
+    void gotoMatch() {
+      pos pos = matches[curMatch];
+      cX = pos.x;
+      cY = pos.y;
+      if (cY < firstShownLine || cY > firstShownLine + textAreaLength()) {
+        goToLine(cY);
+      }
+      highlightMatches();
+      syncCurPosOnScr();
+    }
+
+    void resetMatchSearch() {
+      searchStr = "";
+      matches.clear();
+      curMatch = -1;
+      renderShownText(firstShownLine);
+    }
+
+    bool matchesHighlighted() {
+      if (matches.empty()) return false;
+      return true;
+    }
+
     bool checkForFunctions(string func) {
       string f;
       string param;
@@ -886,6 +1003,30 @@ class Lep : public ModeState {
         }
       }
       return false;
+    }
+
+    void execBashCommand() {
+      updateStatBar(true);
+      updateCommandBar();
+
+      FILE* fpipe;
+      char c = 0;
+      string msg = "";
+      while (true) {
+        string com = queryUser(comLineText);
+        if (com == "") return;
+
+        fpipe = (FILE*)popen(com.c_str(), "r");
+        if (fpipe == 0) {
+          showErrorMsg(com + " failed");
+        } else {
+          while (fread(&c, sizeof(c), 1, fpipe)) {
+            msg += c;
+          }
+          showMsg(msg);
+        }
+      }
+      int status = pclose(fpipe);
     }
 
     bool execCommand() {
@@ -1138,7 +1279,7 @@ class Lep : public ModeState {
     void updateCommandBar() {
       printf("\033[%d;1H", winRows); // Move cursor to the last line
       cout << "\033[2K\r"; // Clear current line
-      cout << " " << comLineText;
+      cout << comLineText;
       cout << "\033[0m" << flush;
     }
 
