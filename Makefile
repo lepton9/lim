@@ -3,7 +3,7 @@ INC := -I ./include
 FLAGS := -c $(INC)
 CC := g++
 
-OBJS := lep.o ModeState.o Clipboard.o Clip.o Config.o
+OBJS := lep.o ModeState.o Clipboard.o Clip.o Config.o Filetree.o
 
 lep: $(OBJS)
 	$(CC) $^ -o $@

@@ -1,5 +1,8 @@
+#include <cstdio>
+#include <filesystem>
 #include <iostream>
 #include <cstring>
+#include <string>
 #include <unistd.h>
 #include <fstream>
 #include <termios.h>
@@ -12,6 +15,7 @@
 #include "../include/Clipboard.h"
 #include "../include/Clip.h"
 #include "../include/Config.h"
+#include "../include/Filetree.h"
 //#include <conio.h>
 
 using namespace std;
@@ -67,7 +71,7 @@ class Lep : public ModeState {
       renderShownText(firstShownLine);
       updateStatBar();
 
-      if (curIsAtMaxPos()) {
+      if (fileOpen && curIsAtMaxPos()) {
         cX = maxPosOfLine(cY);
         syncCurPosOnScr();
       }
@@ -83,6 +87,11 @@ class Lep : public ModeState {
               resetMatchSearch();
             }
             handleEvent(Event::BACK);
+            break;
+          case 10:
+            if (curInFileTree) {
+              fTreeSelect();
+            }
             break;
           case 'i':
             handleEvent(Event::INPUT);
@@ -175,7 +184,20 @@ class Lep : public ModeState {
             cpLineEnd();
             break;
           case 14: // C-n
-            // Show file tree
+            ftree.toggleShow();
+            renderFiletree();
+            break;
+          case 8: // C-h
+            if (ftree.isShown() && !curInFileTree) {
+              curInFileTree = true;
+              syncCurPosOnScr();
+            }
+            break;
+          case 12: // C-l
+            if (ftree.isShown() && curInFileTree) {
+              curInFileTree = false;
+              syncCurPosOnScr();
+            }
             break;
           case 16: // C-p + #, paste from clipboard at index #
             c = readKey();
@@ -188,7 +210,8 @@ class Lep : public ModeState {
           //Movement
           case 'h': case 'j': case 'k': case 'l':
           case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
-            curMove(c);
+            if (curInFileTree) curMoveFileTree(c);
+            else curMove(c);
             break;
         }
       }
@@ -360,8 +383,17 @@ class Lep : public ModeState {
     }
 
     void start(string fName) {
-      fileName = fName;
-      readFile(fileName);
+      path = filesystem::current_path();
+      ftree = Filetree(path);
+      if (fName == "") {
+        curInFileTree = true;
+        ftree.toggleShow();
+        renderFiletree();
+        showMsg(":lep");
+        printStartUpScreen();
+      } else {
+        readFile(fName, true);
+      }
     }
 
   private:
@@ -383,7 +415,11 @@ class Lep : public ModeState {
     bool unsaved;
     string searchStr;
     vector<pos> matches;
-    int curMatch = 0;
+    int curMatch = -1;
+
+    bool fileOpen = false;
+    bool curInFileTree = false;
+    Filetree ftree;
 
     string comLineText = "";
     vector<string> oldCommands;
@@ -399,7 +435,11 @@ class Lep : public ModeState {
       func("setconfig", &Lep::setconfig)
     };
 
+    string path;
     string fileName;
+    string fullpath() {
+        return path + "/" + fileName;
+    }
 
     Config config;
 
@@ -470,7 +510,9 @@ class Lep : public ModeState {
       clsResetCur();
       readConfig();
       firstShownLine = 0;
+      if (ftree.isShown()) renderFiletree();
       renderShownText(firstShownLine);
+      syncCurPosOnScr();
     }
 
     void confirmRename(string newName) {
@@ -532,6 +574,7 @@ class Lep : public ModeState {
     }
 
     void newlineEscSeq() {
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       string newLine = lines[cY].substr(cX);
       lines[cY].erase(cX);
       cY++;
@@ -539,9 +582,9 @@ class Lep : public ModeState {
       cX = 0;
       if (cY-1 == firstShownLine + winRows - 2 - marginTop) {
         scrollDown();
-        printf("\033[%dG", marginLeft);
+        printf("\033[%dG", marginLeft + padLeft);
       } else {
-        printf("\033[1E\033[%dG", marginLeft);
+        printf("\033[1E\033[%dG", marginLeft + padLeft);
       }
       fflush(stdout);
       updateRenderedLines(cY-1);
@@ -556,6 +599,7 @@ class Lep : public ModeState {
     }
 
     void backspaceKey() {
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       int ePos;
       if (cX == 0) {
         if (cY == 0) return;
@@ -564,7 +608,7 @@ class Lep : public ModeState {
         cY--;
         cX = lines[cY].length();
         lines[cY].append(delLine);
-        printf("\033[1A\033[%dG", cX + marginLeft);
+        printf("\033[1A\033[%dG", cX + marginLeft + padLeft);
         updateRenderedLines(cY);
       } else {
         lines[cY].erase(cX - 1, 1);
@@ -636,6 +680,81 @@ class Lep : public ModeState {
       } else {
         return c;
       }
+    }
+
+    void printStartUpScreen() {
+      cout << "\033[s";
+      vector<string> logo = {
+          " ____",                  
+          "|    |    ____ ______  ",
+          "|    |  _/ __ \\\\____ \\ ",
+          "|    |__\\  ___/|  |_) |",
+          "|_______ \\___      __/ ",
+          "               |__|    "
+      };
+
+      printf("\033[%d;0H", marginTop);
+      for (vector<string>::iterator it = logo.begin(); it < logo.end(); it++) {
+        printf("\033[%dG", ftree.treeWidth + 5);
+        printf("%s\033[1E", it->c_str());
+      }
+      cout << "\033[u";
+    }
+
+    void fTreeSelect() {
+      if (!curInFileTree) return;
+
+      if (ftree.getElementOnCur()->isDir) {
+        showMsg(ftree.getElementOnCur()->path);
+        ftree.changeDirectory(ftree.getElementOnCur()->path);
+        renderFiletree();
+        syncCurPosOnScr();
+      } else {
+        if (unsaved) {
+          while(1) {
+            string ans = queryUser("Unsaved changes. Save changes [y/n]:");
+            if (ans == "y") {
+              overwriteFile();
+              break;
+            }
+            else if (ans == "n") break;
+            else if (ans == "" && comLineText.empty()) return;
+          }
+        }
+        path = ftree.getElementOnCur()->path.parent_path();
+        readFile(ftree.getElementOnCur()->name);
+        firstShownLine = 0;
+        cX = 0, cY = 0;
+        curInFileTree = false;
+        syncCurPosOnScr();
+        renderShownText(firstShownLine);
+      }
+    }
+
+    void curMoveFileTree(int c) {
+      int lastLine = ftree.cY;
+      if (c == 'h' || c == LEFT_KEY) {
+        //curLeftTree();
+      } else if (c == 'j' || c == DOWN_KEY) {
+        curTreeDown();
+      } else if (c == 'k' || c == UP_KEY) {
+        curTreeUp();
+      } else if (c == 'l' || c == RIGHT_KEY) {
+        //curRightTree();
+      }
+      if (ftree.cY != lastLine) {
+        updateFTreeHighlight(ftree.cY, lastLine);
+        syncCurPosOnScr();
+      }
+    }
+
+    void curTreeUp() {
+      if (ftree.cY <= 0) return;
+      ftree.cY--;
+    }
+    void curTreeDown() {
+      if (ftree.cY >= ftree.tree.size() - 1) return;
+      ftree.cY++;
     }
 
     void curMove(int c) {
@@ -714,7 +833,8 @@ class Lep : public ModeState {
         }
         cY--;
         cX = maxPosOfLine(cY);
-        printf("\033[%dG", cX + marginLeft);
+        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+        printf("\033[%dG", cX + marginLeft + padLeft);
       }
     }
 
@@ -734,7 +854,8 @@ class Lep : public ModeState {
         }
         cY++;
         cX = 0;
-        printf("\033[%dG", marginLeft);
+        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+        printf("\033[%dG", marginLeft + padLeft);
       }
     }
 
@@ -1105,8 +1226,14 @@ class Lep : public ModeState {
     }
 
     void syncCurPosOnScr() {
-      printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft);
-      fflush(stdout);
+      if (curInFileTree) {
+        printf("\033[%d;%dH", ftree.cY + marginTop, ftree.cX);
+        fflush(stdout);
+      } else {
+        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+        printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft + padLeft);
+        fflush(stdout);
+      }
     }
     
     bool curIsAtMaxPos() {
@@ -1151,19 +1278,20 @@ class Lep : public ModeState {
 
     string showLineNum(int lNum) {
       if (config.lineNum) {
+        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
         string strLNum = to_string(lNum);
         if (config.relativenumber) {
           if (lNum == 0) {
             checkLineNumSpace(to_string(cY+1));
-            return "\033[0G\033[97m" + alignR(to_string(cY+1), lineNumPad) + "\033[0m"; // White highlight
+            return "\033[" + to_string(padLeft) + "G\033[97m" + alignR(to_string(cY+1), lineNumPad) + "\033[0m"; // White highlight
           }
-          return "\033[0G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
+          return "\033[" + to_string(padLeft) + "G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
         }
         checkLineNumSpace(strLNum);
         if (lNum == cY + 1) {
-          return "\033[0G\033[97m" + alignR(strLNum, lineNumPad) + "\033[0m"; // White highlight
+          return "\033[" + to_string(padLeft) + "G\033[97m" + alignR(strLNum, lineNumPad) + "\033[0m"; // White highlight
         }
-        return "\033[0G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
+        return "\033[" + to_string(padLeft) + "G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
       }
       return "\0";
     }
@@ -1188,18 +1316,19 @@ class Lep : public ModeState {
 
     void fillEmptyLines() {
       if (lines.size() < textAreaLength()) {
+        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
         for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
-          printf("\033[40;34m\033[2K\033[%dG%s\033[1E", 0, alignR("~", lineNumPad).c_str());
+          printf("\033[40;34m\033[%dG\033[0K%s\033[1E", padLeft, alignR("~", lineNumPad).c_str());
         }
         cout << "\033[0m";
       }
     }
 
     void printLine(int i) {
-      printf("\033[%dG", marginLeft);
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+      printf("\033[%dG", marginLeft + padLeft);
       if (lines[i].length() > winCols - marginLeft) {
         cout << lines[i].substr(0, winCols - marginLeft) << "\033[1E";
-        //cout << lines[i].substr(winCols - marginLeft) << "\033[1E";
       }
       else {
         cout << lines[i] << "\033[1E";
@@ -1217,7 +1346,11 @@ class Lep : public ModeState {
 
       for (int i = startLine; i < lines.size() && i <= startLine + maxIterWithOffset 
           && i - startLine < count; i++) {
-        cout << "\033[2K";
+        if (ftree.isShown()) {
+          printf("\033[%dG\033[0K", ftree.treeWidth);
+        } else {
+          cout << "\033[2K";
+        }
         if (!config.relativenumber) cout << showLineNum(i + 1);
         printLine(i);
       }
@@ -1228,15 +1361,87 @@ class Lep : public ModeState {
     }
 
     void renderShownText(int startLine) {
+      if (!fileOpen) return;
       cout << "\033[s";
       printf("\033[%d;1H", marginTop);
       for(int i = startLine; i < lines.size() && i <= textAreaLength() + startLine; i++) {
-        cout << "\033[2K";
+        if (ftree.isShown()) {
+          printf("\033[%dG\033[0K", ftree.treeWidth + 1);
+        } else {
+          cout << "\033[2K";
+        }
         printLine(i);
       }
       fillEmptyLines();
       cout << "\033[u" << flush;
       updateLineNums(startLine);
+    }
+
+    void renderFiletree() {
+      if (!ftree.isShown()) {
+        curInFileTree = false;
+        renderShownText(firstShownLine);
+        syncCurPosOnScr();
+        return;
+      }
+
+      curInFileTree = true;
+
+      printf("\033[%d;0H", marginTop);
+      for (int i = 0; i < ftree.tree.size() && i < textAreaLength(); i++) {
+        printf("\033[%dG\033[1K\033[0G", ftree.treeWidth);
+        cout << fileTreeLine(i) << "\033[1E";
+      }
+      fflush(stdout);
+      fillEmptyTreeLines();
+      renderShownText(firstShownLine);
+      syncCurPosOnScr();
+    }
+
+    void fillEmptyTreeLines() {
+      if (ftree.tree.size() < textAreaLength()) {
+        for (int i = 0; i <= textAreaLength() - ftree.tree.size(); i++) {
+          printf("\033[%dG\033[1K\033[0G", ftree.treeWidth);
+          cout << string(ftree.treeWidth - 1, ' ') << "|";
+          cout << "\033[1E";
+        }
+        fflush(stdout);
+      }
+    }
+
+    string fileTreeLine(int i) {
+      string ret = "";
+      int nLen = ftree.tree[i].name.length();
+
+
+      if (ftree.tree[i].isDir) ret += "D \033[34m";
+      else ret += "F ";
+
+      if (i == ftree.cY) {
+          ret += "\033[7m" + ftree.tree[i].name + "\033[0m";
+      } else {
+          ret += ftree.tree[i].name;
+      }
+
+      int spaces = ftree.treeWidth - nLen - 3;
+      if (ftree.tree[i].isDir) {
+        ret += "\033[0m/";
+        spaces--;
+    }
+
+      if (spaces > 0) {
+        ret += string(spaces, ' ');
+      }
+      ret += "|";
+      return ret;
+    }
+
+    void updateFTreeHighlight(int curL, int lastL) {
+      printf("\033[%d;%dH\033[1K\033[0G", marginTop + curL, ftree.treeWidth);
+      cout << fileTreeLine(curL) << "\033[1E";
+      printf("\033[%d;%dH\033[1K\033[0G", marginTop + lastL, ftree.treeWidth);
+      cout << fileTreeLine(lastL) << "\033[1E";
+      fflush(stdout);
     }
 
     void updateStatBar(bool showCommandLine = false) {
@@ -1504,26 +1709,27 @@ class Lep : public ModeState {
       }
     }
 
-    fstream* openFile(string fName, bool createIfNotFound) {
-      fstream* file = new fstream(fileName);
+    fstream* openFile(string fullPath, bool createIfNotFound) {
+      fstream* file = new fstream(fullPath);
 
       if(file->is_open()){
-        showMsg("File \"" + fileName + "\" found");
+        showMsg(fullpath());
       }
       else if (createIfNotFound) {
         ofstream* file = new ofstream(fileName);
-        showErrorMsg("File \"" + fileName + "\" created");
+        showMsg(fullpath() + " created");
         file->open(fileName, ios::in);
       }
 
       return file;
     }
 
-    void readFile(string fName) {
+    void readFile(string fName, bool create = false) {
       fileName = fName;
-      fstream* fptr = openFile(fileName, true);
+      fstream* fptr = openFile(fullpath(), create);
       readToLines(fptr);
       delete fptr;
+      fileOpen = true;
       syncCurPosOnScr();
     }
 
@@ -1594,7 +1800,7 @@ int main(int argc, char** argv) {
   string fileName;
   if (argc >= 2) fileName = argv[1];
   else {
-    fileName = "fileNameNotGiven.txt";
+    fileName = "";
   }
 
   Lep lep;
