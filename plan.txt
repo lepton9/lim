@@ -1,8 +1,8 @@
 DONE:
 
 TODO:
-  - create new files
-    - :create path + "filename"
+- create new files
+  - :create path + "filename"
 - if at startup file name is not given show empty
 - when winCols < line.length() extend the line o next line and move line numbering
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence

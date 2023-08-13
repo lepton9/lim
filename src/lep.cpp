@@ -67,8 +67,6 @@ class Lep : public ModeState {
     }
 
     void modeNormal() {
-      getWinSize();
-      renderShownText(firstShownLine);
       updateStatBar();
 
       if (fileOpen && curIsAtMaxPos()) {
@@ -124,6 +122,10 @@ class Lep : public ModeState {
             handleEvent(Event::COMMAND);
             search();
             handleEvent(Event::BACK);
+            break;
+          case '*':
+            if (curInFileTree) break;
+            searchStrOnCur();
             break;
           case 'n':
             if (matchesHighlighted()) {
@@ -413,6 +415,7 @@ class Lep : public ModeState {
     int firstShownLine = 0;
     vector<string> lines;
     bool unsaved;
+
     string searchStr;
     vector<pos> matches;
     int curMatch = -1;
@@ -1037,6 +1040,37 @@ class Lep : public ModeState {
       }
     }
 
+    string getStrOnCur() {
+      string sChars = " :;,.{}[]()";
+      char charOnCur = lines[cY][cX];
+      if (sChars.find(charOnCur) != string::npos) {
+        return string(1, charOnCur);
+      }
+      int xS = cX;
+      int len = 1;
+      while (xS > 0 && sChars.find(lines[cY][xS - 1]) == string::npos) {
+          xS--;
+      }
+      while (abs(len+xS) <= lines[cY].length() && sChars.find(lines[cY][xS + len]) == string::npos) {
+          len++;
+      }
+      return lines[cY].substr(xS, len);
+    }
+
+    void searchStrOnCur() {
+      resetMatchSearch();
+      searchStr = getStrOnCur();
+      if (searchStr == " ") {
+        searchStr = "";
+        return;
+      }
+      if (searchForMatches() > 0) {
+        curMatch = getMatchClosestToCur();
+        gotoNextMatch();
+        highlightMatches();
+      }
+    }
+
     int searchForMatches() {
       for (int yp = 0; yp < lines.size(); yp++) {
         int xp = lines[yp].find(searchStr);
@@ -1045,6 +1079,8 @@ class Lep : public ModeState {
           xp = lines[yp].find(searchStr, xp + 1);
         }
       }
+      showMsg("<\"" + searchStr +"\"> " + to_string(matches.size()) + " matches");
+      syncCurPosOnScr();
       return matches.size();
     }
 
@@ -1062,10 +1098,25 @@ class Lep : public ModeState {
       cout << "\033[u" << flush;
     }
 
+    int getMatchClosestToCur() {
+      int closest = -1;
+      int d;
+      for (int i = 0; i < matches.size(); i++) {
+        d = abs(matches[i].y - cY);
+        if (closest < 0 || d < abs(matches[closest].y - cY)) {
+          closest = i;
+        }
+      }
+      return closest;
+    }
+
     void gotoNextMatch() {
       if (matches.empty()) return;
-      if (curMatch >= matches.size() - 1) {
+      if ( curMatch > 0 && curMatch >= matches.size() - 1) {
         curMatch = 0;
+      } 
+      else if (curMatch < 0) {
+        curMatch = getMatchClosestToCur();
       } else {
         curMatch++;
       }
@@ -1103,6 +1154,31 @@ class Lep : public ModeState {
     bool matchesHighlighted() {
       if (matches.empty()) return false;
       return true;
+    }
+
+    int replaceMatch(const string newStr, pos& p) {
+      lines[p.y].replace(p.x, searchStr.length(), newStr);
+      unsaved = true;
+      return newStr.length() - searchStr.length();
+    }
+
+    void replaceAllMatches(string newStr) {
+      if (matches.empty()) return;
+      int posMoved = 0;
+      for (int i = 0; i < matches.size(); i++) {
+        if (i > 0 && matches[i-1].y == matches[i].y) {
+          matches[i].x += posMoved;
+        } else {
+          posMoved = 0;
+        }
+        posMoved += replaceMatch(newStr, matches[i]);
+      }
+      showMsg("<\"" + searchStr +"\"> -> <\"" + newStr + "\"> " + to_string(matches.size()) + " replaced");
+      searchStr = newStr;
+      renderShownText(firstShownLine);
+      gotoNextMatch();
+      highlightMatches();
+      syncCurPosOnScr();
     }
 
     bool checkForFunctions(string func) {
@@ -1161,6 +1237,40 @@ class Lep : public ModeState {
 
       if (checkForFunctions(com)) {
         comLineText = ':' + com;
+        return true;
+      }
+
+      if (comLineText.substr(0,2) == ":/") {
+        searchStr = comLineText.substr(2);
+        if (searchForMatches() > 0) {
+          gotoNextMatch();
+          highlightMatches();
+        }
+        handleEvent(Event::BACK);
+        return true;
+      }
+      if (comLineText.substr(0,3) == ":r/") {
+        string str = comLineText.substr(3);
+        int posDash = str.find_last_of("/");
+        if (posDash == string::npos) {
+          handleEvent(Event::BACK);
+          return false;
+        }
+        searchStr = str.substr(0, posDash);
+        if (searchForMatches() > 0) {
+          gotoNextMatch();
+          highlightMatches();
+          replaceAllMatches(str.substr(posDash + 1));
+        }
+        handleEvent(Event::BACK);
+        return true;
+      }
+
+      if (comLineText.substr(0,3) == ":r ") {
+        if (searchStr != "" && matches.size() > 0) {
+          replaceAllMatches(comLineText.substr(3));
+        }
+        handleEvent(Event::BACK);
         return true;
       }
 
@@ -1730,6 +1840,8 @@ class Lep : public ModeState {
       readToLines(fptr);
       delete fptr;
       fileOpen = true;
+      getWinSize();
+      renderShownText(firstShownLine);
       syncCurPosOnScr();
     }
 
