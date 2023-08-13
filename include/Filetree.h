@@ -20,6 +20,8 @@ class Filetree {
     void toggleShow();
     fileDir* getElementOnCur();
     void changeDirectory(std::string path);
+    std::string current_path();
+    void refresh();
     int cX, cY;
     int treeWidth = 30;
   private:

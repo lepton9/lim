@@ -95,8 +95,17 @@ class Lep : public ModeState {
             handleEvent(Event::INPUT);
             break;
           case 'a':
+            if (curInFileTree) {
+              createFile();
+              break;
+            }
             handleEvent(Event::INPUT);
             if (!curIsAtMaxPos()) curRight();
+            break;
+          case 'r': //TODO: rename file on cur
+            if (curInFileTree) {
+              renameFileOnCur();
+            }
             break;
           case 'I':
             handleEvent(Event::INPUT);
@@ -168,6 +177,10 @@ class Lep : public ModeState {
             goToFileEnd();
             break;
           case 'd':
+            if (curInFileTree) {
+              removeFileOnCur();
+              break;
+            }
             c = readKey();
             if (c == 'd') {
               delCpLine();
@@ -435,7 +448,8 @@ class Lep : public ModeState {
       func("rename", &Lep::rename), 
       func("restart", &Lep::restart), 
       func("set", &Lep::set), 
-      func("setconfig", &Lep::setconfig)
+      func("setconfig", &Lep::setconfig),
+      func("path", &Lep::showPath),
     };
 
     string path;
@@ -452,6 +466,22 @@ class Lep : public ModeState {
       updateVariables();
 
       return true;
+    }
+
+    void clearAll() {
+      path = "";
+      fileName = "";
+      searchStr = "";
+      comLineText = "";
+      matches.clear();
+      fileOpen = false;
+      firstShownLine = 0;
+      curMatch = -1;
+      lines.clear();
+      unsaved = false;
+      clipboard.clear();
+      oldCommands.clear();
+      selectedText.clear();
     }
 
     void updateVariables() {
@@ -539,6 +569,11 @@ class Lep : public ModeState {
         confirmRename(newName);
         return;
       }
+    }
+
+    void showPath(string args) {
+      showMsg(fullpath());
+      syncCurPosOnScr();
     }
 
     string queryUser(string query) {
@@ -720,7 +755,10 @@ class Lep : public ModeState {
               overwriteFile();
               break;
             }
-            else if (ans == "n") break;
+            else if (ans == "n") {
+              unsaved = false;
+              break;
+            }
             else if (ans == "" && comLineText.empty()) return;
           }
         }
@@ -749,6 +787,99 @@ class Lep : public ModeState {
         updateFTreeHighlight(ftree.cY, lastLine);
         syncCurPosOnScr();
       }
+    }
+
+    void refreshFileTree() {
+      ftree.refresh();
+      renderFiletree();
+      syncCurPosOnScr();
+    }
+
+    void createFile() {
+      if (!curInFileTree) return;
+
+      string fName = queryUser("Create file " + path + "/");
+      if (fName == "") {
+        comLineText = "";
+        updateCommandBar();
+        return;
+      }
+
+      string fullPath = ftree.current_path() + "/" + fName;
+      fstream* newFile = openFile(fullPath, true);
+      newFile->close();
+      delete newFile;
+      refreshFileTree();
+    }
+
+    void closeCurFile() {
+      clearAll();
+      curInFileTree = true;
+      if (!ftree.isShown()) ftree.toggleShow();
+      clsResetCur();
+      renderFiletree();
+      printStartUpScreen();
+    }
+
+    void removeDirOnCur() {
+      string dPathRem = ftree.getElementOnCur()->path;
+      string ans = queryUser("Delete directory and its contents \"" + dPathRem + "\"? (y/n): ");
+  
+      if (ans == "y") {
+        int c = filesystem::remove_all(dPathRem);
+        if (dPathRem == path) {
+          closeCurFile();
+        }
+        refreshFileTree();
+        showMsg(to_string(c) + " files or directories deleted");
+        syncCurPosOnScr();
+      }
+      else {
+        comLineText = "";
+        updateCommandBar();
+      }
+    }
+
+    void removeFileOnCur() {
+      if (!curInFileTree) return;
+      if (ftree.getElementOnCur()->isDir) {
+        removeDirOnCur();
+        return;
+      }
+      string fPathRem = ftree.getElementOnCur()->path;
+      string fNameRem = ftree.getElementOnCur()->name;
+      string ans = queryUser("Remove \"" + fNameRem + "\"? (y/n): ");
+      if (ans == "y") {
+        filesystem::remove(fPathRem);
+        refreshFileTree();
+        showMsg("File " + fPathRem + " was removed");
+        syncCurPosOnScr();
+        if (fPathRem == fullpath()) {
+          closeCurFile();
+        }
+      }
+      else {
+        comLineText = "";
+        updateCommandBar();
+      }
+    }
+
+    void renameFileOnCur() {
+      if (!curInFileTree) return;
+      
+      string newName = queryUser("Rename " + ftree.getElementOnCur()->name + " to ");
+      if (newName == "") return;
+      string oldPath = ftree.getElementOnCur()->path.string();
+      string newPath = oldPath.substr(0, oldPath.find_last_of("/") + 1) + newName;
+      filesystem::rename(ftree.getElementOnCur()->path, newPath);
+      if (oldPath == fullpath()) {
+        path = ftree.current_path();
+        fileName = newName;
+        updateStatBar();
+      }
+      refreshFileTree();
+      showMsg(oldPath + " -> " + newPath);
+      syncCurPosOnScr();
     }
 
     void curTreeUp() {
@@ -1445,6 +1576,14 @@ class Lep : public ModeState {
       }
     }
 
+    void clearLine() {
+      if (ftree.isShown()) {
+        printf("\033[%dG\033[0K", ftree.treeWidth + 1);
+      } else {
+        cout << "\033[2K";
+      }
+    }
+
     void updateRenderedLines(int startLine, int count = -1) {
       cout << "\033[s";
       printf("\033[%d;0H", marginTop + startLine - firstShownLine);
@@ -1456,11 +1595,7 @@ class Lep : public ModeState {
 
       for (int i = startLine; i < lines.size() && i <= startLine + maxIterWithOffset 
           && i - startLine < count; i++) {
-        if (ftree.isShown()) {
-          printf("\033[%dG\033[0K", ftree.treeWidth);
-        } else {
-          cout << "\033[2K";
-        }
+        clearLine();
         if (!config.relativenumber) cout << showLineNum(i + 1);
         printLine(i);
       }
@@ -1475,11 +1610,7 @@ class Lep : public ModeState {
       cout << "\033[s";
       printf("\033[%d;1H", marginTop);
       for(int i = startLine; i < lines.size() && i <= textAreaLength() + startLine; i++) {
-        if (ftree.isShown()) {
-          printf("\033[%dG\033[0K", ftree.treeWidth + 1);
-        } else {
-          cout << "\033[2K";
-        }
+        clearLine();
         printLine(i);
       }
       fillEmptyLines();
@@ -1823,12 +1954,12 @@ class Lep : public ModeState {
       fstream* file = new fstream(fullPath);
 
       if(file->is_open()){
-        showMsg(fullpath());
+        showMsg(fullPath);
       }
       else if (createIfNotFound) {
-        ofstream* file = new ofstream(fileName);
-        showMsg(fullpath() + " created");
-        file->open(fileName, ios::in);
+        ofstream* file = new ofstream(fullPath);
+        showMsg(fullPath + " created");
+        file->open(fullPath, ios::in);
       }
 
       return file;
@@ -1862,7 +1993,7 @@ class Lep : public ModeState {
         unsaved = false;
         return;
       } 
-      ofstream file(fileName);
+      ofstream file(fullpath());
       for(const string& line : lines) {
         file << line << '\n';
       }

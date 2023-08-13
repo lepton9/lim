@@ -59,4 +59,15 @@ void Filetree::changeDirectory(std::string _path) {
   getFilesFromPath();
 }
 
+void Filetree::refresh() {
+  cX = 0;
+  cY = 0;
+  getFilesFromPath();
+}
+
+std::string Filetree::current_path() {
+  return path;
+}
+
+
 

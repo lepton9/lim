@@ -1,9 +1,7 @@
 DONE:
 
 TODO:
-- create new files
-  - :create path + "filename"
-- if at startup file name is not given show empty
+- copying and pasting files
 - when winCols < line.length() extend the line o next line and move line numbering
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written
