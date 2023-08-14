@@ -1,5 +1,7 @@
 #include "../include/Filetree.h"
 #include <algorithm>
+#include <cstring>
+#include <filesystem>
 
 Filetree::Filetree() {
   cX = 0;
@@ -65,9 +67,26 @@ void Filetree::refresh() {
   getFilesFromPath();
 }
 
-std::string Filetree::current_path() {
+std::filesystem::path Filetree::current_path() {
   return path;
 }
 
+void Filetree::copy() {
+  if (cY < 2) return;
+  copied = new (fileDir){
+    .path = getElementOnCur()->path, 
+    .name = getElementOnCur()->name, 
+    .isDir = getElementOnCur()->isDir
+  };
+}
+
+void Filetree::paste(std::string path) {
+  if (copied->isDir) {
+    std::filesystem::copy(copied->path, path, std::filesystem::copy_options::recursive);
+  } else {
+    std::filesystem::copy(copied->path, path);
+  }
+  delete copied;
+}
 
 

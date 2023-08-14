@@ -152,7 +152,16 @@ class Lep : public ModeState {
           case 'V':
             handleEvent(Event::VLINE);
             break;
+          case 'c':
+            if (curInFileTree) {
+              copyFileOnCur();
+            }
+            break;
           case 'p':
+            if (curInFileTree) {
+              pasteFileInCurDir();
+              break;
+            }
             pasteClipboard();
             break;
           case 'W': // Beginning of next word
@@ -805,7 +814,7 @@ class Lep : public ModeState {
         return;
       }
 
-      string fullPath = ftree.current_path() + "/" + fName;
+      string fullPath = ftree.current_path().string() + "/" + fName;
       fstream* newFile = openFile(fullPath, true);
       newFile->close();
       delete newFile;
@@ -879,6 +888,33 @@ class Lep : public ModeState {
       }
       refreshFileTree();
       showMsg(oldPath + " -> " + newPath);
+      syncCurPosOnScr();
+    }
+
+    void copyFileOnCur() {
+      if (!curInFileTree) return;
+      ftree.copy();
+      if (ftree.copied->isDir) {
+        showMsg("Directory " + ftree.copied->path.string() + " copied recursively");
+      } else {
+        showMsg("File " + ftree.copied->path.string() + " copied");
+      }
+      syncCurPosOnScr();
+    }
+
+    void pasteFileInCurDir() {
+      if (!curInFileTree || ftree.copied == NULL) return;
+      string oldPath = ftree.copied->path.string();
+      string newPath = ftree.current_path().string() + "/" + ftree.copied->name;
+      if (ftree.copied->path.parent_path() == ftree.current_path()) {
+        string newName = queryUser("Rename to " + ftree.current_path().parent_path().string() + "/");
+        if (newName == "") return;
+        newPath = ftree.current_path().string() + "/" + newName;
+      }
+      ftree.paste(newPath);
+
+      refreshFileTree();
+      showMsg(oldPath + " copied to " + newPath);
       syncCurPosOnScr();
     }
 
