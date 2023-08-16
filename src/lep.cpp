@@ -1,9 +1,7 @@
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <cstring>
-#include <string>
 #include <unistd.h>
 #include <fstream>
 #include <termios.h>
@@ -125,7 +123,6 @@ class Lep : public ModeState {
             handleEvent(Event::COMMAND);
             comLineText = ":!";
             execBashCommand();
-            restart("");
             handleEvent(Event::BACK);
             break;
           case '/':
@@ -1388,28 +1385,41 @@ class Lep : public ModeState {
       return false;
     }
 
-    void execBashCommand() {
+    bool execBashCommand(string com = "") {
       updateStatBar(true);
       updateCommandBar();
 
+      bool ret = false;
       FILE* fpipe;
       char c = 0;
       string msg = "";
+
       while (true) {
-        string com = queryUser(comLineText);
-        if (com == "") return;
+        if (com == "") {
+          com = queryUser(comLineText);
+          if (com == "") break;
+        }
 
         fpipe = (FILE*)popen(com.c_str(), "r");
         if (fpipe == 0) {
           showErrorMsg(com + " failed");
+          ret = false;
         } else {
           while (fread(&c, sizeof(c), 1, fpipe)) {
             msg += c;
           }
           showMsg(msg);
+          ret = true;
         }
+        com = "";
       }
+
       int status = pclose(fpipe);
+      clsResetCur();
+      renderFiletree();
+      renderShownText(firstShownLine);
+      syncCurPosOnScr();
+      return ret;
     }
 
     bool execCommand() {
@@ -1419,6 +1429,10 @@ class Lep : public ModeState {
         int line = charToInt(clt);
         goToLine(--line);
         return true;
+      }
+
+      if (comLineText.substr(0,2) == ":!") {
+        return execBashCommand(comLineText.substr(2));
       }
 
       if (checkForFunctions(com)) {
@@ -1631,6 +1645,7 @@ class Lep : public ModeState {
     void printLine(int i) {
       int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       printf("\033[%dG", marginLeft + padLeft);
+      fgColor(config.fg_color);
       if (lines[i].length() > winCols - marginLeft) {
         cout << lines[i].substr(0, winCols - marginLeft) << "\033[1E";
       }
@@ -1762,7 +1777,8 @@ class Lep : public ModeState {
         printf("\033[%d;0H", winRows); // Move cursor to the last line
       }
       cout << "\033[2K\r"; // Clear current line
-      cout << "\033[47;30m"; // Set bg color to white and text color to black
+      bgColor(config.sb_bg_color);
+      fgColor(config.sb_fg_color);
       string mode;
       if (currentState == State::INPUT) mode = " INPUT";
       else if (currentState == State::COMMAND) mode = " COMMAND";
@@ -1785,6 +1801,8 @@ class Lep : public ModeState {
       }
 
       cout << eInfo;
+      bgColor(config.sb_bg_color);
+      fgColor(config.sb_fg_color);
       cout << string(fillerSpace, ' ') << curInfo;
       cout << "\033[0m\033[u" << flush;
     }

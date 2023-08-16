@@ -62,21 +62,34 @@ bool Config::handleKeyValue(std::string key, std::string value) {
     }
   }
   else if (key == "bg_color") {
-
+    if (is_hex(value)) {
+      bg_color = std::strtoul(value.c_str(), NULL, 16);
+      changed = true;
+    }
   }
   else if (key == "fg_color") {
-
+    if (is_hex(value)) {
+      fg_color = std::strtoul(value.c_str(), NULL, 16);
+      changed = true;
+    }
   }
   else if (key == "sb_bg_color") {
-
+    if (is_hex(value)) {
+      sb_bg_color = std::strtoul(value.c_str(), NULL, 16);
+      changed = true;
+    }
   }
   else if (key == "sb_fg_color") {
-
+    if (is_hex(value)) {
+      sb_fg_color = std::strtoul(value.c_str(), NULL, 16);
+      changed = true;
+    }
   }
   return changed;
 }
 
 void Config::parse() {
+  setDefault();
   std::fstream* file = openFile();
   if (!file) return;
   if (file->peek() == EOF) return;
@@ -109,23 +122,26 @@ void Config::setDefault() {
     lineNum = true;
     relativenumber = false;
     comline_visible = false;
-    bg_color = 0xFF000000;
-    fg_color = 0xFFFFFFFF;
-    sb_bg_color = 0xFFFFFFFF;
-    sb_fg_color = 0xFF000000;
+    bg_color = 0x000000;
+    fg_color = 0xFFFFFF;
+    sb_bg_color = 0xFFFFFF;
+    sb_fg_color = 0x000000;
 }
 
-uint8_t Config::a(uint32_t color) {
-  return ((0xFF000000&color)>>8*3);
-}
 uint8_t Config::r(uint32_t color) {
-  return ((0x00FF0000&color)>>8*2);
+  return ((0xFF0000&color)>>8*2);
 }
 uint8_t Config::g(uint32_t color) {
-  return ((0x0000FF00&color)>>8*1);
+  return ((0x00FF00&color)>>8*1);
 }
 uint8_t Config::b(uint32_t color) {
-  return ((0x000000FF&color)>>8*0);
+  return ((0x0000FF&color));
+}
+
+bool Config::is_hex(std::string const& s) {
+  return s.compare(0, 2, "0x") == 0
+      && s.size() > 2
+      && s.find_first_not_of("0123456789abcdefABCDEF", 2) == std::string::npos;
 }
 
 bool Config::setFilePath(std::string path) {

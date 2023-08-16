@@ -6,9 +6,4 @@ TODO:
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written
 - set a time to show a command box info text and not sleep(1) and pause the program
-
 - unicode support
-  - if char < 0 move cursor only by one
-  - maybe make the lines a vector<vector<string>> where it can store larger chars like 'ä'
-  - when erasing check if its negative then remove the character next to it also
-  - cursor moving over unicode chars

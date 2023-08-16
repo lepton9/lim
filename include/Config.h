@@ -20,7 +20,6 @@ class Config {
     uint32_t fg_color;
     uint32_t sb_bg_color;
     uint32_t sb_fg_color;
-    uint8_t a(uint32_t color);
     uint8_t r(uint32_t color);
     uint8_t g(uint32_t color);
     uint8_t b(uint32_t color);
@@ -32,6 +31,7 @@ class Config {
     void writeToConfFile(std::string v, std::string p);
     bool handleKeyValue(std::string key, std::string value);
     void setDefault();
+    bool is_hex(std::string const& s);
     bool validVariable(std::string var);
     std::string variables[9] = {
       "tab_indent", 
@@ -44,8 +44,6 @@ class Config {
       "sb_bg_color",
       "sb_fg_color"
     };
-
 };
-
 
 #endif
