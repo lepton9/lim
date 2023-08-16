@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <cstdint>
 #include <string>
 #include <fstream>
 
@@ -15,10 +16,14 @@ class Config {
     bool lineNum = true;
     bool relativenumber = false;
     bool comline_visible = false;
-    int bg_color;
-    int fg_color;
-    int sb_bg_color;
-    int sb_fg_color;
+    uint32_t bg_color;
+    uint32_t fg_color;
+    uint32_t sb_bg_color;
+    uint32_t sb_fg_color;
+    uint8_t a(uint32_t color);
+    uint8_t r(uint32_t color);
+    uint8_t g(uint32_t color);
+    uint8_t b(uint32_t color);
 
   private:
     const std::string fileName = ".lepconfig";

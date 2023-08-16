@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
@@ -128,6 +129,7 @@ class Lep : public ModeState {
             handleEvent(Event::BACK);
             break;
           case '/':
+          case 6: // C+f
             handleEvent(Event::COMMAND);
             search();
             handleEvent(Event::BACK);
@@ -435,6 +437,7 @@ class Lep : public ModeState {
     int winRows;
     int winCols;
     int firstShownLine = 0;
+    int firstShownFile = 0;
     vector<string> lines;
     bool unsaved;
 
@@ -485,6 +488,7 @@ class Lep : public ModeState {
       matches.clear();
       fileOpen = false;
       firstShownLine = 0;
+      firstShownFile = 0;
       curMatch = -1;
       lines.clear();
       unsaved = false;
@@ -552,6 +556,7 @@ class Lep : public ModeState {
       clsResetCur();
       readConfig();
       firstShownLine = 0;
+      firstShownFile = 0;
       if (ftree.isShown()) renderFiletree();
       renderShownText(firstShownLine);
       syncCurPosOnScr();
@@ -752,6 +757,7 @@ class Lep : public ModeState {
       if (!curInFileTree) return;
 
       if (ftree.getElementOnCur()->isDir) {
+        firstShownFile = 0;
         showMsg(ftree.getElementOnCur()->path);
         ftree.changeDirectory(ftree.getElementOnCur()->path);
         renderFiletree();
@@ -920,10 +926,23 @@ class Lep : public ModeState {
 
     void curTreeUp() {
       if (ftree.cY <= 0) return;
+      if (ftree.cY == firstShownFile && firstShownFile > 0) {
+        firstShownFile--;
+        ftree.cY--;
+        renderFiletree();
+        return;
+      }
       ftree.cY--;
     }
+
     void curTreeDown() {
       if (ftree.cY >= ftree.tree.size() - 1) return;
+      if (ftree.cY >= firstShownFile + textAreaLength()) {
+        firstShownFile++;
+        ftree.cY++;
+        renderFiletree();
+        return;
+      }
       ftree.cY++;
     }
 
@@ -969,7 +988,7 @@ class Lep : public ModeState {
         return;
       }
       if (cY < lines.size() - 1) {
-        if (cY == firstShownLine + winRows - 2 - marginTop) {
+        if (cY == firstShownLine + textAreaLength()) {
           scrollDown();
         } else {
           cout << "\033[1B" << flush;
@@ -1504,7 +1523,7 @@ class Lep : public ModeState {
 
     void syncCurPosOnScr() {
       if (curInFileTree) {
-        printf("\033[%d;%dH", ftree.cY + marginTop, ftree.cX);
+        printf("\033[%d;%dH", ftree.cY - firstShownFile + marginTop, ftree.cX);
         fflush(stdout);
       } else {
         int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
@@ -1601,6 +1620,14 @@ class Lep : public ModeState {
       }
     }
 
+    void fgColor(uint32_t color) {
+      printf("\033[38;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
+    }
+    
+    void bgColor(uint32_t color) {
+      printf("\033[48;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
+    }
+
     void printLine(int i) {
       int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       printf("\033[%dG", marginLeft + padLeft);
@@ -1610,6 +1637,7 @@ class Lep : public ModeState {
       else {
         cout << lines[i] << "\033[1E";
       }
+      cout << "\033[0m";
     }
 
     void clearLine() {
@@ -1665,7 +1693,7 @@ class Lep : public ModeState {
       curInFileTree = true;
 
       printf("\033[%d;0H", marginTop);
-      for (int i = 0; i < ftree.tree.size() && i < textAreaLength(); i++) {
+      for (int i = firstShownFile; i < ftree.tree.size() && i <= textAreaLength() + firstShownFile; i++) {
         printf("\033[%dG\033[1K\033[0G", ftree.treeWidth);
         cout << fileTreeLine(i) << "\033[1E";
       }
@@ -1689,15 +1717,18 @@ class Lep : public ModeState {
     string fileTreeLine(int i) {
       string ret = "";
       int nLen = ftree.tree[i].name.length();
-
+      string fname = ftree.tree[i].name;
+      if (nLen > ftree.treeWidth - 3) {
+        fname = fname.substr(0, ftree.treeWidth - 3);
+      }
 
       if (ftree.tree[i].isDir) ret += "D \033[34m";
       else ret += "F ";
 
       if (i == ftree.cY) {
-          ret += "\033[7m" + ftree.tree[i].name + "\033[0m";
+          ret += "\033[7m" + fname + "\033[0m";
       } else {
-          ret += ftree.tree[i].name;
+          ret += fname;
       }
 
       int spaces = ftree.treeWidth - nLen - 3;
@@ -1714,9 +1745,9 @@ class Lep : public ModeState {
     }
 
     void updateFTreeHighlight(int curL, int lastL) {
-      printf("\033[%d;%dH\033[1K\033[0G", marginTop + curL, ftree.treeWidth);
+      printf("\033[%d;%dH\033[1K\033[0G", marginTop + curL - firstShownFile, ftree.treeWidth);
       cout << fileTreeLine(curL) << "\033[1E";
-      printf("\033[%d;%dH\033[1K\033[0G", marginTop + lastL, ftree.treeWidth);
+      printf("\033[%d;%dH\033[1K\033[0G", marginTop + lastL - firstShownFile, ftree.treeWidth);
       cout << fileTreeLine(lastL) << "\033[1E";
       fflush(stdout);
     }

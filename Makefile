@@ -1,22 +1,24 @@
 SRC := ./src
+BIN := ./bin
+OBJS := ./objs
 INC := -I ./include
 FLAGS := -c $(INC)
 CC := g++
 
-OBJS := lep.o ModeState.o Clipboard.o Clip.o Config.o Filetree.o
+OBJ := ./objs/lep.o ./objs/ModeState.o ./objs/Clipboard.o ./objs/Clip.o ./objs/Config.o ./objs/Filetree.o
 
-lep: $(OBJS)
-	$(CC) $^ -o $@
+lep: $(OBJ)
+	$(CC) $^ -o $(BIN)/$@
 
-%.o: $(SRC)/%.cpp
-	$(CC) $(FLAGS) $<
+$(OBJS)/%.o: $(SRC)/%.cpp
+	$(CC) $(FLAGS) $< -o $@
 
 debug:
-	$(CC) $(INC) $(SRC)/*.cpp -pthread -g -o lepDebug
-	gdb -tui lepDebug
+	$(CC) $(INC) $(SRC)/*.cpp -pthread -g -o $(BIN)/lepDebug
+	gdb -tui $(BIN)/lepDebug
 
 clean:
-	rm -rf *.o lepDebug
+	rm -rf $(OBJS)/*.o $(BIN)/lepDebug
 
 run:
-	./lep
+	$(BIN)/lep

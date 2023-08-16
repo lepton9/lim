@@ -109,10 +109,23 @@ void Config::setDefault() {
     lineNum = true;
     relativenumber = false;
     comline_visible = false;
-    //bg_color;
-    //fg_color;
-    //sb_bg_color;
-    //sb_fg_color;
+    bg_color = 0xFF000000;
+    fg_color = 0xFFFFFFFF;
+    sb_bg_color = 0xFFFFFFFF;
+    sb_fg_color = 0xFF000000;
+}
+
+uint8_t Config::a(uint32_t color) {
+  return ((0xFF000000&color)>>8*3);
+}
+uint8_t Config::r(uint32_t color) {
+  return ((0x00FF0000&color)>>8*2);
+}
+uint8_t Config::g(uint32_t color) {
+  return ((0x0000FF00&color)>>8*1);
+}
+uint8_t Config::b(uint32_t color) {
+  return ((0x000000FF&color)>>8*0);
 }
 
 bool Config::setFilePath(std::string path) {
