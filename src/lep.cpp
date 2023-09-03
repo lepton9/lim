@@ -364,7 +364,7 @@ class Lep : public ModeState {
         c = readKey();
         switch (c) {
           case 27: //Esc
-            selectedText.clear();
+            clearSelectionUpdate();
             handleEvent(Event::BACK);
             break;
           case 10: //Enter
@@ -376,6 +376,7 @@ class Lep : public ModeState {
             break;
           case 'y':
             copySelection();
+            clearSelectionUpdate();
             handleEvent(Event::BACK);
             break;
           case 'd':
@@ -434,6 +435,7 @@ class Lep : public ModeState {
     int winRows;
     int winCols;
     int firstShownLine = 0;
+    int firstShownCol = 0;
     int firstShownFile = 0;
     vector<string> lines;
     bool unsaved;
@@ -458,6 +460,7 @@ class Lep : public ModeState {
       func("restart", &Lep::restart), 
       func("set", &Lep::set), 
       func("setconfig", &Lep::setconfig),
+      func("configpath", &Lep::showConfigPath),
       func("path", &Lep::showPath),
     };
 
@@ -485,6 +488,7 @@ class Lep : public ModeState {
       matches.clear();
       fileOpen = false;
       firstShownLine = 0;
+      firstShownCol = 0;
       firstShownFile = 0;
       curMatch = -1;
       lines.clear();
@@ -517,6 +521,11 @@ class Lep : public ModeState {
       } else {
         showErrorMsg("Not a valid path " + newPath);
       }
+    }
+
+    void showConfigPath(string arg) {
+      showMsg(config.getFilePath());
+      syncCurPosOnScr();
     }
 
     void rename(string fName) {
@@ -553,6 +562,7 @@ class Lep : public ModeState {
       clsResetCur();
       readConfig();
       firstShownLine = 0;
+      firstShownCol = 0;
       firstShownFile = 0;
       if (ftree.isShown()) renderFiletree();
       renderShownText(firstShownLine);
@@ -971,11 +981,16 @@ class Lep : public ModeState {
 
         if (curIsAtMaxPos()) {
           cX = maxPosOfLine(cY);
+          fitTextHorizontal();
           syncCurPosOnScr();
         }
       }
       else {
         cX = 0;
+        if (firstShownCol != 0) {
+          firstShownCol = 0;
+          renderShownText(firstShownLine);
+        }
         syncCurPosOnScr();
       }
     }
@@ -994,11 +1009,13 @@ class Lep : public ModeState {
 
         if (curIsAtMaxPos()) {
           cX = maxPosOfLine(cY);
+          fitTextHorizontal();
           syncCurPosOnScr();
         }
       }
       else {
         cX = maxPosOfLine(cY);
+        fitTextHorizontal();
         syncCurPosOnScr();
       }
     }
@@ -1008,8 +1025,12 @@ class Lep : public ModeState {
         return;
       }
       if (cX > 0) {
-        cout << "\033[1D" << flush;
         cX--;
+        if (cX < firstShownCol && firstShownCol > 0) {
+          scrollLeft();
+        } else {
+          cout << "\033[1D" << flush;
+        }
       }
       else if (cX == 0 && config.curWrap && cY != 0) {
         if (cY == firstShownLine) {
@@ -1019,8 +1040,7 @@ class Lep : public ModeState {
         }
         cY--;
         cX = maxPosOfLine(cY);
-        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-        printf("\033[%dG", cX + marginLeft + padLeft);
+        fitTextHorizontal();
       }
     }
 
@@ -1028,9 +1048,14 @@ class Lep : public ModeState {
       if (lines.empty()) {
         return;
       }
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       if (!curIsAtMaxPos()) {
-        cout << "\033[1C" << flush;
         cX++;
+        if (cX - firstShownCol == winCols - marginLeft - padLeft && lines[cY].length() - 1 > cX) {
+          scrollRight();
+        } else {
+          cout << "\033[1C" << flush;
+        }
       }
       else if (curIsAtMaxPos() && config.curWrap && cY < lines.size() - 1) {
         if (cY == firstShownLine + winRows - 2 - marginTop) {
@@ -1040,8 +1065,26 @@ class Lep : public ModeState {
         }
         cY++;
         cX = 0;
-        int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+        if (firstShownCol != 0) {
+          firstShownCol = 0;
+          renderShownText(firstShownLine);
+        }
         printf("\033[%dG", marginLeft + padLeft);
+      }
+    }
+
+    void fitTextHorizontal() {
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+      if (cX > winCols - marginLeft - padLeft) {
+        firstShownCol = cX - winCols + marginLeft + padLeft + 1;
+        renderShownText(firstShownLine);
+        printf("\033[%dG", winCols - 1);
+      } else {
+        if (firstShownCol != 0) {
+          firstShownCol = 0;
+          renderShownText(firstShownLine);
+        }
+        printf("\033[%dG", cX + marginLeft + padLeft);
       }
     }
 
@@ -1486,9 +1529,9 @@ class Lep : public ModeState {
         else if (comLineText[i] == 'w') overwriteFile();
         else if (comLineText[i] == 'q') {
           if (i < comLineText.length() - 1 && comLineText[i + 1] == '!') {
-            exitLep(true);
+            handleExit(true);
           } else {
-            exitLep(false);
+            handleExit(false);
           }
         }
       }
@@ -1541,7 +1584,7 @@ class Lep : public ModeState {
         fflush(stdout);
       } else {
         int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-        printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX + marginLeft + padLeft);
+        printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX - firstShownCol + marginLeft + padLeft);
         fflush(stdout);
       }
     }
@@ -1573,6 +1616,16 @@ class Lep : public ModeState {
 
     void scrollDown() {
       renderShownText(++firstShownLine);
+    }
+
+    void scrollLeft() {
+      firstShownCol--;
+      renderShownText(firstShownLine);
+    }
+
+    void scrollRight() {
+      firstShownCol++;
+      renderShownText(firstShownLine);
     }
 
     string alignR(string s, int w) {
@@ -1646,11 +1699,16 @@ class Lep : public ModeState {
       int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
       printf("\033[%dG", marginLeft + padLeft);
       fgColor(config.fg_color);
-      if (lines[i].length() > winCols - marginLeft) {
-        cout << lines[i].substr(0, winCols - marginLeft) << "\033[1E";
+
+      if (lines[i].length() > winCols - marginLeft - padLeft) {
+        cout << lines[i].substr(firstShownCol, winCols - marginLeft - padLeft) << "\033[1E";
       }
       else {
-        cout << lines[i] << "\033[1E";
+        if (firstShownCol > lines[i].length()) {
+          cout << "\033[1E";
+        } else {
+          cout << lines[i].substr(firstShownCol, lines[i].length() - firstShownCol) << "\033[1E";
+        }
       }
       cout << "\033[0m";
     }
@@ -1857,6 +1915,15 @@ class Lep : public ModeState {
       cout << "\033[0m\033[u" << flush;
     }
 
+    void clearSelectionUpdate() {
+      cY = selectedText.bY;
+      cX = selectedText.bX;
+      checkSelectionPoints(&selectedText);
+      syncCurPosOnScr();
+      updateRenderedLines(selectedText.bY);
+      selectedText.clear();
+    }
+
     void copySelection() {
       if (selectedText.isNull()) return;
       checkSelectionPoints(&selectedText);
@@ -1920,10 +1987,7 @@ class Lep : public ModeState {
       else {
         cX = min(selectedText.bX, static_cast<int>(lines[startLine].length()));
       }
-      cY = selectedText.bY;
-      syncCurPosOnScr();
-      selectedText.clear();
-      updateRenderedLines(startLine);
+      clearSelectionUpdate();
     }
     
     void checkSelectionPoints(textArea* selection) {
@@ -1994,11 +2058,6 @@ class Lep : public ModeState {
           lines.insert(lines.begin() + cY + 1, line);
           cY++;
           cX = minPosOfLineIWS(cY);
-        }
-        else if (curIsAtMaxPos()) {
-          lines.insert(lines.begin() + cY + 1, line);
-          cY++;
-          cX = maxPosOfLine(cY);
         }
         else {
           remain = lines[cY].substr(cX + 1);
@@ -2089,7 +2148,7 @@ class Lep : public ModeState {
       file.close();
     }
 
-    void exitLep(bool force) {
+    void handleExit(bool force) {
       if (unsaved && !force) {
         while(1) {
           string ans = queryUser("Unsaved changes. Save changes [y/n]:");
@@ -2101,6 +2160,15 @@ class Lep : public ModeState {
           else if (ans == "" && comLineText.empty()) return;
         }
       }
+
+      if (ftree.isShown() && !curInFileTree) {
+        closeCurFile();
+      } else {
+        exitLep();
+      }
+    }
+
+    void exitLep() {
       system("clear");
       exit(0);
     }

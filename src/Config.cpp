@@ -160,6 +160,10 @@ bool Config::setFilePath(std::string path) {
   return ret;
 }
 
+std::string Config::getFilePath() {
+  return filePath + fileName;
+}
+
 bool Config::validVariable(std::string var) {
   for (std::string v : variables) {
     if (v == var) return true;

@@ -1,5 +1,5 @@
 # Lep
-A basic text editor. Better than emacs.
+A basic text editor written in C++.
 
 ## Key commands
 ``` Console
@@ -10,6 +10,8 @@ A basic text editor. Better than emacs.
 :restart restart editor
 :set change config file variables
 :setconfig set path to .lepconfig
+:configpath to show the path to the config file
+:path to show the path of the current file or directory
 C+n to toggle file manager
 
 ```

@@ -2,7 +2,6 @@ DONE:
 
 TODO:
 - :find file, and open if found
-- when winCols < line.length() extend the line o next line and move line numbering
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written
 - set a time to show a command box info text and not sleep(1) and pause the program

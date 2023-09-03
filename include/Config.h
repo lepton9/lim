@@ -9,6 +9,7 @@ class Config {
   public:
     void parse();
     bool setFilePath(std::string path);
+    std::string getFilePath();
     bool set(std::string var);
 
     int indentAm = 2;
