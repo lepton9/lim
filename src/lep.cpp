@@ -15,7 +15,6 @@
 #include "../include/Clip.h"
 #include "../include/Config.h"
 #include "../include/Filetree.h"
-//#include <conio.h>
 
 using namespace std;
 
@@ -232,6 +231,7 @@ class Lep : public ModeState {
 
           //Movement
           case 'h': case 'j': case 'k': case 'l':
+          case 'H': case 'J': case 'K': case 'L':
           case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
             if (curInFileTree) curMoveFileTree(c);
             else curMove(c);
@@ -962,6 +962,21 @@ class Lep : public ModeState {
         curUp();
       } else if (c == 'l' || c == RIGHT_KEY) {
         curRight();
+      } 
+      else if (c == 'H') {
+        gotoBegOfLast();
+      } else if (c == 'J') {
+        if (firstShownLine + textAreaLength() < lines.size() - 1) {
+          cY++;
+          scrollDown();
+        }
+      } else if (c == 'K') {
+        if (firstShownLine > 0) {
+          cY--;
+          scrollUp();
+        }
+      } else if (c == 'L') {
+        gotoBegOfNext();
       }
       updateStatBar();
       updateLineNums(firstShownLine);
@@ -1129,9 +1144,12 @@ class Lep : public ModeState {
         gotoBegOfNext();
         return;
       }
-      if (cX == x) {
+      if (cX == x && cY < lines.size() - 1) {
         cY++;
         cX = minPosOfLineIWS(cY);
+      }
+      else if (cX == x) {
+        cX = maxPosOfLine(cY);
       }
       syncCurPosOnScr();
     }
@@ -1184,9 +1202,10 @@ class Lep : public ModeState {
           break;
         }
       }
-      if (cX < minPosOfLineIWS(cY) && cY != 0) {
+      if ((cX <= minPosOfLineIWS(cY) || cX == x) && cY != 0) {
         cY--;
         cX = maxPosOfLine(cY);
+        gotoBegOfLast();
       }
       else if (cX == x && cY == 0) {
         cX = minPosOfLineIWS(cY);
@@ -1543,6 +1562,12 @@ class Lep : public ModeState {
       return winRows - marginTop - 2;
     }
 
+    int textAreaWidth() {
+      int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+      int w = winCols - marginLeft - padLeft;
+      return w;
+    }
+
     void showMsg(string msg) {
       if (!config.comline_visible) updateStatBar(true);
       comLineText = msg;
@@ -1583,6 +1608,10 @@ class Lep : public ModeState {
         printf("\033[%d;%dH", ftree.cY - firstShownFile + marginTop, ftree.cX);
         fflush(stdout);
       } else {
+        if (curIsOutOfScreenHor()) {
+          setCurToScreenHor();
+          renderShownText(firstShownLine);
+        }
         int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
         printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX - firstShownCol + marginLeft + padLeft);
         fflush(stdout);
@@ -1598,6 +1627,18 @@ class Lep : public ModeState {
         return true;
       }
       return false;
+    }
+
+    bool curIsOutOfScreenHor() {
+      return cX > firstShownCol + textAreaWidth() || cX < firstShownCol;
+    }
+
+    void setCurToScreenHor() {
+      if (cX < firstShownCol) {
+        firstShownCol = cX;
+      } else {
+        firstShownCol = cX - textAreaWidth();
+      }
     }
 
     int maxPosOfLine(int y) {
@@ -2189,6 +2230,29 @@ void eRawMode() {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
+void run(Lep* lep) {
+  while(1) {
+    switch (lep->currentState) {
+      case State::INPUT:
+        lep->modeInput();
+        break;
+
+      case State::COMMAND:
+        lep->modeCommand();
+        break;
+
+      case State::VLINE:
+      case State::VISUAL:
+        lep->modeVisual();
+        break;
+  
+      default:
+        lep->modeNormal();      
+        break;
+    }
+  }
+}
+
 int main(int argc, char** argv) {
 	system("clear");
 	eRawMode();
@@ -2202,26 +2266,7 @@ int main(int argc, char** argv) {
   Lep lep;
   lep.start(fileName);
 
-  while(1) {
-    switch (lep.currentState) {
-      case State::INPUT:
-        lep.modeInput();
-        break;
-
-      case State::COMMAND:
-        lep.modeCommand();
-        break;
-
-      case State::VLINE:
-      case State::VISUAL:
-        lep.modeVisual();
-        break;
-  
-      default:
-        lep.modeNormal();      
-        break;
-    }
-  }
+  run(&lep);
 
 	return 0;
 }
