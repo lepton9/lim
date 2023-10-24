@@ -5,7 +5,7 @@ INC := -I ./include
 FLAGS := -c $(INC)
 CC := g++
 
-OBJ := ./objs/lep.o ./objs/ModeState.o ./objs/Clipboard.o ./objs/Clip.o ./objs/Config.o ./objs/Filetree.o
+OBJ := ./objs/lep.o ./objs/LepEditor.o ./objs/ModeState.o ./objs/Clipboard.o ./objs/Clip.o ./objs/Config.o ./objs/Filetree.o
 
 lep: $(OBJ)
 	$(CC) $^ -o $(BIN)/$@

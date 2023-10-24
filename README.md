@@ -1,7 +1,7 @@
 # Lep
 A basic text editor written in C++.
 
-## Key commands
+## Commands
 ``` Console
 :/"string" or C+f to search for matches
 :r/"s1"/"s2" to replace all matches for s1 with s2
