@@ -1,9 +1,9 @@
 DONE:
 
 TODO:
-- visual selection not moved with text when filetree shown
-- shift + l ar deletes rest of the line from cur
+- disable arrow keys
 - testing
+- undo tree
 - find file, and open if found
 - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - show when is the last time the file was written

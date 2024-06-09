@@ -1838,17 +1838,19 @@ void LepEditor::updateShowSelection() {
 
   updateRenderedLines((sel.bY == firstShownLine) ? firstShownLine : sel.bY-1, sel.eY-sel.bY + 3);
 
+  int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
+
   cout << "\033[s\033[7m"; // Inverse color
-  printf("\033[%d;%dH", marginTop + sel.bY - firstShownLine, marginLeft + sel.bX);
+  printf("\033[%d;%dH", marginTop + sel.bY - firstShownLine, marginLeft + padLeft + sel.bX);
   if (sel.bY == sel.eY) {
     cout << lines[sel.bY].substr(sel.bX, sel.eX-sel.bX + 1);
   } else {
     cout << lines[sel.bY].substr(sel.bX) << "\033[1E";
     for (int i = sel.bY + 1; i < sel.eY; i++) {
-      printf("\033[%dG", marginLeft);
+      printf("\033[%dG", marginLeft + padLeft);
       cout << lines[i] << "\033[1E";
     }
-    printf("\033[%dG", marginLeft);
+      printf("\033[%dG", marginLeft + padLeft);
     cout << lines[sel.eY].substr(0, sel.eX + 1);
   }
   cout << "\033[0m\033[u" << flush;
