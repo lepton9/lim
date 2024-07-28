@@ -1,9 +1,9 @@
-#include "../include/LepEditor.h"
+#include "../include/LimEditor.h"
 
 using namespace std;
 
 
-LepEditor::LepEditor() {
+LimEditor::LimEditor() {
   unsaved = false;
   cX = 0;
   cY = 0;
@@ -11,7 +11,7 @@ LepEditor::LepEditor() {
   readConfig();
 }
 
-void LepEditor::modeNormal() {
+void LimEditor::modeNormal() {
   updateStatBar();
 
   if (fileOpen && curIsAtMaxPos()) {
@@ -187,7 +187,7 @@ void LepEditor::modeNormal() {
   }
 }
 
-void LepEditor::modeInput() {
+void LimEditor::modeInput() {
   getWinSize();
   int c;
   while (currentState == State::INPUT) {
@@ -229,7 +229,7 @@ void LepEditor::modeInput() {
   }
 }
 
-void LepEditor::modeCommand() {
+void LimEditor::modeCommand() {
   int c;
   int comInd = oldCommands.size();
   string curCom = "";
@@ -289,7 +289,7 @@ void LepEditor::modeCommand() {
   }
 }
 
-void LepEditor::modeVisual() {
+void LimEditor::modeVisual() {
   if (currentState == State::VISUAL) {
     selectedText.bX = cX;
     selectedText.bY = cY;
@@ -353,24 +353,24 @@ void LepEditor::modeVisual() {
   }
 }
 
-string LepEditor::fullpath() {
+string LimEditor::fullpath() {
     return path + "/" + fileName;
 }
 
-void LepEditor::start(string fName) {
+void LimEditor::start(string fName) {
   path = filesystem::current_path();
   ftree = Filetree(path);
   if (fName == "") {
     curInFileTree = true;
     ftree.toggleShow();
     renderFiletree();
-    showMsg(":lep");
+    showMsg(":lim");
     printStartUpScreen();
   } else {
     readFile(fName, true);
   }
 }
-bool LepEditor::readConfig() {
+bool LimEditor::readConfig() {
   config.parse();
 
   updateVariables();
@@ -378,7 +378,7 @@ bool LepEditor::readConfig() {
   return true;
 }
 
-void LepEditor::clearAll() {
+void LimEditor::clearAll() {
   path = "";
   fileName = "";
   searchStr = "";
@@ -396,16 +396,16 @@ void LepEditor::clearAll() {
   selectedText.clear();
 }
 
-void LepEditor::updateVariables() {
+void LimEditor::updateVariables() {
   if (config.lineNum) marginLeft = 7;
   else marginLeft = 2;
 }
 
-void LepEditor::setconfig(string path) {
+void LimEditor::setconfig(string path) {
   string newPath;
   bool success = false;
   if (path == "") {
-    newPath = queryUser("Set path to \".lepconfig\": ");
+    newPath = queryUser("Set path to \".limconfig\": ");
     if (newPath == "") return;
   }
   else {
@@ -421,12 +421,12 @@ void LepEditor::setconfig(string path) {
   }
 }
 
-void LepEditor::showConfigPath(string arg) {
+void LimEditor::showConfigPath(string arg) {
   showMsg(config.getFilePath());
   syncCurPosOnScr();
 }
 
-void LepEditor::rename(string fName) {
+void LimEditor::rename(string fName) {
   if (fName == "") {
     string newName = queryUser("Set a new file name: ");
 
@@ -440,7 +440,7 @@ void LepEditor::rename(string fName) {
   }
 }
 
-void LepEditor::set(string var) {
+void LimEditor::set(string var) {
   if (var == "") {
     return;
   }
@@ -455,7 +455,7 @@ void LepEditor::set(string var) {
   }
 }
 
-void LepEditor::restart(string p) {
+void LimEditor::restart(string p) {
   getWinSize();
   clsResetCur();
   readConfig();
@@ -467,7 +467,7 @@ void LepEditor::restart(string p) {
   syncCurPosOnScr();
 }
 
-void LepEditor::confirmRename(string newName) {
+void LimEditor::confirmRename(string newName) {
   string ans = queryUser("Rename the file \"" + newName + "\"? [y/n]: ");
   if (ans == "y") {
     int result = std::rename(fileName.c_str(), newName.c_str());
@@ -490,12 +490,12 @@ void LepEditor::confirmRename(string newName) {
   }
 }
 
-void LepEditor::showPath(string args) {
+void LimEditor::showPath(string args) {
   showMsg(fullpath());
   syncCurPosOnScr();
 }
 
-string LepEditor::queryUser(string query) {
+string LimEditor::queryUser(string query) {
   comLineText = query;
   updateStatBar(true);
   updateCommandBar();
@@ -523,14 +523,14 @@ string LepEditor::queryUser(string query) {
   }
 }
 
-void LepEditor::inputChar(char c) {
+void LimEditor::inputChar(char c) {
   lines[cY].insert(cX, 1, c);
   cout << "\033[1C" << flush;
   cX++;
   updateRenderedLines(cY, 1);
 }
 
-void LepEditor::newlineEscSeq() {
+void LimEditor::newlineEscSeq() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   string newLine = lines[cY].substr(cX);
   lines[cY].erase(cX);
@@ -547,7 +547,7 @@ void LepEditor::newlineEscSeq() {
   updateRenderedLines(cY-1);
 }
 
-void LepEditor::tabKey() {
+void LimEditor::tabKey() {
   lines[cY].insert(cX, string(config.indentAm, ' '));
   cX += config.indentAm;
   printf("\033[%dC", config.indentAm);
@@ -555,7 +555,7 @@ void LepEditor::tabKey() {
   updateRenderedLines(cY, 1);
 }
 
-void LepEditor::backspaceKey() {
+void LimEditor::backspaceKey() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   int ePos;
   if (cX == 0) {
@@ -576,7 +576,7 @@ void LepEditor::backspaceKey() {
   fflush(stdout);
 }
 
-void LepEditor::deleteKey() {
+void LimEditor::deleteKey() {
   if (cX == lines[cY].length()) {
     if (cY == lines.size()-1) return;
     string delLine = lines[cY+1];
@@ -589,13 +589,13 @@ void LepEditor::deleteKey() {
   }
 }
 
-void LepEditor::comModeDelChar() {
+void LimEditor::comModeDelChar() {
   if (!comLineText.empty()) {
     comLineText.pop_back();
   }
 }
 
-int LepEditor::readKey() {
+int LimEditor::readKey() {
   int ret;
   char c;
   while ((ret = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -639,15 +639,15 @@ int LepEditor::readKey() {
   }
 }
 
-void LepEditor::printStartUpScreen() {
+void LimEditor::printStartUpScreen() {
   cout << "\033[s";
+
   vector<string> logo = {
-      " ____",                  
-      "|    |    ____ ______  ",
-      "|    |  _/ __ \\\\____ \\ ",
-      "|    |__\\  ___/|  |_) |",
-      "|_______ \\___      __/ ",
-      "               |__|    "
+    "  _     _           ",
+    " | |   (_)_ __ ___  ",
+    " | |   | | '_ ` _ \\ ",
+    " | |___| | | | | | |",
+    " |_____|_|_| |_| |_|"
   };
 
   printf("\033[%d;0H", marginTop);
@@ -658,7 +658,7 @@ void LepEditor::printStartUpScreen() {
   cout << "\033[u";
 }
 
-void LepEditor::fTreeSelect() {
+void LimEditor::fTreeSelect() {
   if (!curInFileTree) return;
 
   if (ftree.getElementOnCur()->isDir) {
@@ -692,7 +692,7 @@ void LepEditor::fTreeSelect() {
   }
 }
 
-void LepEditor::curMoveFileTree(int c) {
+void LimEditor::curMoveFileTree(int c) {
   int lastLine = ftree.cY;
   if (c == 'h' || c == LEFT_KEY) {
     //curLeftTree();
@@ -709,13 +709,13 @@ void LepEditor::curMoveFileTree(int c) {
   }
 }
 
-void LepEditor::refreshFileTree() {
+void LimEditor::refreshFileTree() {
   ftree.refresh();
   renderFiletree();
   syncCurPosOnScr();
 }
 
-void LepEditor::createFile() {
+void LimEditor::createFile() {
   if (!curInFileTree) return;
 
   string fName = queryUser("Create file " + path + "/");
@@ -732,7 +732,7 @@ void LepEditor::createFile() {
   refreshFileTree();
 }
 
-void LepEditor::closeCurFile() {
+void LimEditor::closeCurFile() {
   clearAll();
   curInFileTree = true;
   if (!ftree.isShown()) ftree.toggleShow();
@@ -741,7 +741,7 @@ void LepEditor::closeCurFile() {
   printStartUpScreen();
 }
 
-void LepEditor::removeDirOnCur() {
+void LimEditor::removeDirOnCur() {
   string dPathRem = ftree.getElementOnCur()->path;
   string ans = queryUser("Delete directory and its contents \"" + dPathRem + "\"? (y/n): ");
 
@@ -760,7 +760,7 @@ void LepEditor::removeDirOnCur() {
   }
 }
 
-void LepEditor::removeFileOnCur() {
+void LimEditor::removeFileOnCur() {
   if (!curInFileTree) return;
   if (ftree.getElementOnCur()->isDir) {
     removeDirOnCur();
@@ -784,7 +784,7 @@ void LepEditor::removeFileOnCur() {
   }
 }
 
-void LepEditor::renameFileOnCur() {
+void LimEditor::renameFileOnCur() {
   if (!curInFileTree) return;
   
   string newName = queryUser("Rename " + ftree.getElementOnCur()->name + " to ");
@@ -802,7 +802,7 @@ void LepEditor::renameFileOnCur() {
   syncCurPosOnScr();
 }
 
-void LepEditor::copyFileOnCur() {
+void LimEditor::copyFileOnCur() {
   if (!curInFileTree) return;
   ftree.copy();
   if (ftree.copied->isDir) {
@@ -813,7 +813,7 @@ void LepEditor::copyFileOnCur() {
   syncCurPosOnScr();
 }
 
-void LepEditor::pasteFileInCurDir() {
+void LimEditor::pasteFileInCurDir() {
   if (!curInFileTree || ftree.copied == NULL) return;
   string oldPath = ftree.copied->path.string();
   string newPath = ftree.current_path().string() + "/" + ftree.copied->name;
@@ -829,7 +829,7 @@ void LepEditor::pasteFileInCurDir() {
   syncCurPosOnScr();
 }
 
-void LepEditor::curTreeUp() {
+void LimEditor::curTreeUp() {
   if (ftree.cY <= 0) return;
   if (ftree.cY == firstShownFile && firstShownFile > 0) {
     firstShownFile--;
@@ -840,7 +840,7 @@ void LepEditor::curTreeUp() {
   ftree.cY--;
 }
 
-void LepEditor::curTreeDown() {
+void LimEditor::curTreeDown() {
   if (ftree.cY >= ftree.tree.size() - 1) return;
   if (ftree.cY >= firstShownFile + textAreaLength()) {
     firstShownFile++;
@@ -851,7 +851,7 @@ void LepEditor::curTreeDown() {
   ftree.cY++;
 }
 
-void LepEditor::curMove(int c) {
+void LimEditor::curMove(int c) {
   if (c == 'h' || c == LEFT_KEY) {
     curLeft();
   } else if (c == 'j' || c == DOWN_KEY) {
@@ -880,7 +880,7 @@ void LepEditor::curMove(int c) {
   updateLineNums(firstShownLine);
 }
 
-void LepEditor::curUp() {
+void LimEditor::curUp() {
   if (lines.empty()) {
     return;
   }
@@ -908,7 +908,7 @@ void LepEditor::curUp() {
   }
 }
 
-void LepEditor::curDown() {
+void LimEditor::curDown() {
   if (lines.empty()) {
     return;
   }
@@ -933,7 +933,7 @@ void LepEditor::curDown() {
   }
 }
 
-void LepEditor::curLeft() {
+void LimEditor::curLeft() {
   if (lines.empty()) {
     return;
   }
@@ -957,7 +957,7 @@ void LepEditor::curLeft() {
   }
 }
 
-void LepEditor::curRight() {      
+void LimEditor::curRight() {      
   if (lines.empty()) {
     return;
   }
@@ -986,7 +986,7 @@ void LepEditor::curRight() {
   }
 }
 
-void LepEditor::fitTextHorizontal() {
+void LimEditor::fitTextHorizontal() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   if (cX > winCols - marginLeft - padLeft) {
     firstShownCol = cX - winCols + marginLeft + padLeft + 1;
@@ -1001,11 +1001,11 @@ void LepEditor::fitTextHorizontal() {
   }
 }
 
-bool LepEditor::is_integer(const string &s){
+bool LimEditor::is_integer(const string &s){
     return regex_match(s, regex("[+-]?[0-9]+"));
 }
 
-unsigned LepEditor::charTOunsigned(const char * c) {
+unsigned LimEditor::charTOunsigned(const char * c) {
     unsigned unsignInt = 0;
     while (*c) {
         unsignInt = unsignInt * 10 + (*c - '0');
@@ -1014,11 +1014,11 @@ unsigned LepEditor::charTOunsigned(const char * c) {
     return unsignInt;
 }
 
-int LepEditor::charToInt(const char * c) {
+int LimEditor::charToInt(const char * c) {
   return (*c == '-') ? -charTOunsigned(c+ 1) : charTOunsigned(c);
 }
 
-void LepEditor::gotoBegOfNext() {
+void LimEditor::gotoBegOfNext() {
   if (curIsAtMaxPos() && cY == lines.size() - 1) return;
 
   string sc = ";:(){}[]\"";
@@ -1052,7 +1052,7 @@ void LepEditor::gotoBegOfNext() {
   syncCurPosOnScr();
 }
 
-void LepEditor::gotoEndOfNext() {
+void LimEditor::gotoEndOfNext() {
   if (curIsAtMaxPos() && cY == lines.size() - 1) return;
 
   string sc = ";:(){}[]\"";
@@ -1088,7 +1088,7 @@ void LepEditor::gotoEndOfNext() {
   syncCurPosOnScr();
 }
 
-void LepEditor::gotoBegOfLast() {
+void LimEditor::gotoBegOfLast() {
   if (cY == 0 && cX == 0) return;
 
   string sc = ";:(){}[]\"";
@@ -1112,7 +1112,7 @@ void LepEditor::gotoBegOfLast() {
   syncCurPosOnScr();
 }
 
-void LepEditor::goToFileBegin() {
+void LimEditor::goToFileBegin() {
   cY = 0;
   if (curIsAtMaxPos()) {
     cX = maxPosOfLine(cY);
@@ -1122,7 +1122,7 @@ void LepEditor::goToFileBegin() {
   syncCurPosOnScr();
 }
 
-void LepEditor::goToFileEnd() {
+void LimEditor::goToFileEnd() {
   cY = lines.size() - 1;
   if (curIsAtMaxPos()) {
     cX = maxPosOfLine(cY);
@@ -1132,7 +1132,7 @@ void LepEditor::goToFileEnd() {
   syncCurPosOnScr();
 }
 
-void LepEditor::goToLine(int line) {
+void LimEditor::goToLine(int line) {
   if (line < 0) {
     line = 0;
   }
@@ -1165,7 +1165,7 @@ void LepEditor::goToLine(int line) {
   }
 }
 
-void LepEditor::search() {
+void LimEditor::search() {
   resetMatchSearch();
   searchStr = queryUser("/");
   if (searchStr == "") {
@@ -1183,7 +1183,7 @@ void LepEditor::search() {
   }
 }
 
-string LepEditor::getStrOnCur() {
+string LimEditor::getStrOnCur() {
   string sChars = " :;,.{}[]()";
   char charOnCur = lines[cY][cX];
   if (sChars.find(charOnCur) != string::npos) {
@@ -1200,7 +1200,7 @@ string LepEditor::getStrOnCur() {
   return lines[cY].substr(xS, len);
 }
 
-void LepEditor::searchStrOnCur() {
+void LimEditor::searchStrOnCur() {
   resetMatchSearch();
   searchStr = getStrOnCur();
   if (searchStr == " ") {
@@ -1214,7 +1214,7 @@ void LepEditor::searchStrOnCur() {
   }
 }
 
-int LepEditor::searchForMatches() {
+int LimEditor::searchForMatches() {
   for (int yp = 0; yp < lines.size(); yp++) {
     int xp = lines[yp].find(searchStr);
     while (xp != std::string::npos) {
@@ -1227,7 +1227,7 @@ int LepEditor::searchForMatches() {
   return matches.size();
 }
 
-void LepEditor::highlightMatches() {
+void LimEditor::highlightMatches() {
   if (matches.empty()) return;
   cout << "\033[s";
   for (int i = 0; i < matches.size(); i++) {
@@ -1241,7 +1241,7 @@ void LepEditor::highlightMatches() {
   cout << "\033[u" << flush;
 }
 
-int LepEditor::getMatchClosestToCur() {
+int LimEditor::getMatchClosestToCur() {
   int closest = -1;
   int d;
   for (int i = 0; i < matches.size(); i++) {
@@ -1253,7 +1253,7 @@ int LepEditor::getMatchClosestToCur() {
   return closest;
 }
 
-void LepEditor::gotoNextMatch() {
+void LimEditor::gotoNextMatch() {
   if (matches.empty()) return;
   if ( curMatch > 0 && curMatch >= matches.size() - 1) {
     curMatch = 0;
@@ -1266,7 +1266,7 @@ void LepEditor::gotoNextMatch() {
   gotoMatch();
 }
 
-void LepEditor::gotoLastMatch() {
+void LimEditor::gotoLastMatch() {
   if (matches.empty()) return;
   if (curMatch <= 0) {
     curMatch = matches.size() - 1;
@@ -1276,7 +1276,7 @@ void LepEditor::gotoLastMatch() {
   gotoMatch();
 }
 
-void LepEditor::gotoMatch() {
+void LimEditor::gotoMatch() {
   pos pos = matches[curMatch];
   cX = pos.x;
   cY = pos.y;
@@ -1287,25 +1287,25 @@ void LepEditor::gotoMatch() {
   syncCurPosOnScr();
 }
 
-void LepEditor::resetMatchSearch() {
+void LimEditor::resetMatchSearch() {
   searchStr = "";
   matches.clear();
   curMatch = -1;
   renderShownText(firstShownLine);
 }
 
-bool LepEditor::matchesHighlighted() {
+bool LimEditor::matchesHighlighted() {
   if (matches.empty()) return false;
   return true;
 }
 
-int LepEditor::replaceMatch(const string newStr, pos& p) {
+int LimEditor::replaceMatch(const string newStr, pos& p) {
   lines[p.y].replace(p.x, searchStr.length(), newStr);
   unsaved = true;
   return newStr.length() - searchStr.length();
 }
 
-void LepEditor::replaceAllMatches(string newStr) {
+void LimEditor::replaceAllMatches(string newStr) {
   if (matches.empty()) return;
   int posMoved = 0;
   for (int i = 0; i < matches.size(); i++) {
@@ -1324,7 +1324,7 @@ void LepEditor::replaceAllMatches(string newStr) {
   syncCurPosOnScr();
 }
 
-bool LepEditor::checkForFunctions(string func) {
+bool LimEditor::checkForFunctions(string func) {
   string f;
   string param;
   int spacePos = func.find(' ');
@@ -1345,7 +1345,7 @@ bool LepEditor::checkForFunctions(string func) {
   return false;
 }
 
-bool LepEditor::execBashCommand(string com) {
+bool LimEditor::execBashCommand(string com) {
   updateStatBar(true);
   updateCommandBar();
 
@@ -1382,7 +1382,7 @@ bool LepEditor::execBashCommand(string com) {
   return ret;
 }
 
-bool LepEditor::execCommand() {
+bool LimEditor::execCommand() {
   string com = comLineText.substr(1);
   if (is_integer(com)) {
     const char* clt = com.c_str();
@@ -1456,44 +1456,44 @@ bool LepEditor::execCommand() {
   return false;
 }
 
-int LepEditor::textAreaLength() {
+int LimEditor::textAreaLength() {
   return winRows - marginTop - 2;
 }
 
-int LepEditor::textAreaWidth() {
+int LimEditor::textAreaWidth() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   int w = winCols - marginLeft - padLeft;
   return w;
 }
 
-void LepEditor::showMsg(string msg) {
+void LimEditor::showMsg(string msg) {
   if (!config.comline_visible) updateStatBar(true);
   comLineText = msg;
   updateCommandBar();
   if (!config.comline_visible) sleep(1);
 }
 
-void LepEditor::showErrorMsg(string error) {
+void LimEditor::showErrorMsg(string error) {
   if (!config.comline_visible) updateStatBar(true);
   comLineText = "\033[40;31m" + error + "\033[0m";
   updateCommandBar();
   if (!config.comline_visible) sleep(1);
 }
 
-string LepEditor::getPerrorString(const string& errorMsg) {
+string LimEditor::getPerrorString(const string& errorMsg) {
     stringstream ss;
     ss << errorMsg << ": " << strerror(errno);
     return ss.str();
 }
 
-void LepEditor::clsResetCur() {
+void LimEditor::clsResetCur() {
   cX = 0;
   cY = 0;
   printf("\033[2J\033[%d;%dH", marginTop, marginLeft);
   fflush(stdout);
 }
 
-void LepEditor::getCurPosOnScr(int* x, int* y) {
+void LimEditor::getCurPosOnScr(int* x, int* y) {
   cout << "\033[6n";
   char response[32];
   int bytesRead = read(STDIN_FILENO, response, sizeof(response) - 1);
@@ -1501,7 +1501,7 @@ void LepEditor::getCurPosOnScr(int* x, int* y) {
   sscanf(response, "\033[%d;%dR", x, y);
 }
 
-void LepEditor::syncCurPosOnScr() {
+void LimEditor::syncCurPosOnScr() {
   if (curInFileTree) {
     printf("\033[%d;%dH", ftree.cY - firstShownFile + marginTop, ftree.cX);
     fflush(stdout);
@@ -1516,7 +1516,7 @@ void LepEditor::syncCurPosOnScr() {
   }
 }
 
-bool LepEditor::curIsAtMaxPos() {
+bool LimEditor::curIsAtMaxPos() {
   if (lines[cY].empty()) return true;
   if (currentState == State::NORMAL && cX >= lines[cY].length() - 1) {
     return true;
@@ -1527,11 +1527,11 @@ bool LepEditor::curIsAtMaxPos() {
   return false;
 }
 
-bool LepEditor::curIsOutOfScreenHor() {
+bool LimEditor::curIsOutOfScreenHor() {
   return cX > firstShownCol + textAreaWidth() || cX < firstShownCol;
 }
 
-void LepEditor::setCurToScreenHor() {
+void LimEditor::setCurToScreenHor() {
   if (cX < firstShownCol) {
     firstShownCol = cX;
   } else {
@@ -1539,46 +1539,46 @@ void LepEditor::setCurToScreenHor() {
   }
 }
 
-int LepEditor::maxPosOfLine(int y) {
+int LimEditor::maxPosOfLine(int y) {
   if (lines[y].empty()) return 0;
   return (currentState == State::NORMAL) ? lines[y].length() - 1 : lines[y].length();
 }
 
-int LepEditor::minPosOfLineIWS(int y) {
+int LimEditor::minPosOfLineIWS(int y) {
   if (lines[y].empty() || lines[y].find_first_not_of(' ') == string::npos) return 0;
   return lines[y].find_first_not_of(' ');
 }
 
-void LepEditor::scrollUp() {
+void LimEditor::scrollUp() {
   renderShownText(--firstShownLine);
 }
 
-void LepEditor::scrollDown() {
+void LimEditor::scrollDown() {
   renderShownText(++firstShownLine);
 }
 
-void LepEditor::scrollLeft() {
+void LimEditor::scrollLeft() {
   firstShownCol--;
   renderShownText(firstShownLine);
 }
 
-void LepEditor::scrollRight() {
+void LimEditor::scrollRight() {
   firstShownCol++;
   renderShownText(firstShownLine);
 }
 
-string LepEditor::alignR(string s, int w) {
+string LimEditor::alignR(string s, int w) {
   return string(w-s.length(), ' ') + s;
 }
 
-void LepEditor::checkLineNumSpace(string strLNum) {
+void LimEditor::checkLineNumSpace(string strLNum) {
   if (strLNum.length() > lineNumPad) {
     lineNumPad = strLNum.length();
     if (marginLeft - 1 <= lineNumPad) marginLeft++;
   }
 }
 
-string LepEditor::showLineNum(int lNum) {
+string LimEditor::showLineNum(int lNum) {
   if (config.lineNum) {
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
     string strLNum = to_string(lNum);
@@ -1598,7 +1598,7 @@ string LepEditor::showLineNum(int lNum) {
   return "\0";
 }
 
-void LepEditor::updateLineNums(int startLine) {
+void LimEditor::updateLineNums(int startLine) {
   if (config.lineNum) {
     cout << "\033[s";
     printf("\033[%d;0H", marginTop + startLine - firstShownLine);
@@ -1616,7 +1616,7 @@ void LepEditor::updateLineNums(int startLine) {
   }
 }
 
-void LepEditor::fillEmptyLines() {
+void LimEditor::fillEmptyLines() {
   if (lines.size() < textAreaLength()) {
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
     for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
@@ -1626,15 +1626,15 @@ void LepEditor::fillEmptyLines() {
   }
 }
 
-void LepEditor::fgColor(uint32_t color) {
+void LimEditor::fgColor(uint32_t color) {
   printf("\033[38;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
 }
 
-void LepEditor::bgColor(uint32_t color) {
+void LimEditor::bgColor(uint32_t color) {
   printf("\033[48;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
 }
 
-void LepEditor::printLine(int i) {
+void LimEditor::printLine(int i) {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   printf("\033[%dG", marginLeft + padLeft);
   fgColor(config.fg_color);
@@ -1652,7 +1652,7 @@ void LepEditor::printLine(int i) {
   cout << "\033[0m";
 }
 
-void LepEditor::clearLine() {
+void LimEditor::clearLine() {
   if (ftree.isShown()) {
     printf("\033[%dG\033[0K", ftree.treeWidth + 1);
   } else {
@@ -1660,7 +1660,7 @@ void LepEditor::clearLine() {
   }
 }
 
-void LepEditor::updateRenderedLines(int startLine, int count) {
+void LimEditor::updateRenderedLines(int startLine, int count) {
   cout << "\033[s";
   printf("\033[%d;0H", marginTop + startLine - firstShownLine);
   if (count < 0) count = lines.size();
@@ -1681,7 +1681,7 @@ void LepEditor::updateRenderedLines(int startLine, int count) {
   if (config.relativenumber) updateLineNums(firstShownLine);
 }
 
-void LepEditor::renderShownText(int startLine) {
+void LimEditor::renderShownText(int startLine) {
   if (!fileOpen) return;
   cout << "\033[s";
   printf("\033[%d;1H", marginTop);
@@ -1694,7 +1694,7 @@ void LepEditor::renderShownText(int startLine) {
   updateLineNums(startLine);
 }
 
-void LepEditor::renderFiletree() {
+void LimEditor::renderFiletree() {
   if (!ftree.isShown()) {
     curInFileTree = false;
     renderShownText(firstShownLine);
@@ -1715,7 +1715,7 @@ void LepEditor::renderFiletree() {
   syncCurPosOnScr();
 }
 
-void LepEditor::fillEmptyTreeLines() {
+void LimEditor::fillEmptyTreeLines() {
   if (ftree.tree.size() < textAreaLength()) {
     for (int i = 0; i <= textAreaLength() - ftree.tree.size(); i++) {
       printf("\033[%dG\033[1K\033[0G", ftree.treeWidth);
@@ -1726,7 +1726,7 @@ void LepEditor::fillEmptyTreeLines() {
   }
 }
 
-string LepEditor::fileTreeLine(int i) {
+string LimEditor::fileTreeLine(int i) {
   string ret = "";
   int nLen = ftree.tree[i].name.length();
   string fname = ftree.tree[i].name;
@@ -1756,7 +1756,7 @@ string LepEditor::fileTreeLine(int i) {
   return ret;
 }
 
-void LepEditor::updateFTreeHighlight(int curL, int lastL) {
+void LimEditor::updateFTreeHighlight(int curL, int lastL) {
   printf("\033[%d;%dH\033[1K\033[0G", marginTop + curL - firstShownFile, ftree.treeWidth);
   cout << fileTreeLine(curL) << "\033[1E";
   printf("\033[%d;%dH\033[1K\033[0G", marginTop + lastL - firstShownFile, ftree.treeWidth);
@@ -1764,7 +1764,7 @@ void LepEditor::updateFTreeHighlight(int curL, int lastL) {
   fflush(stdout);
 }
 
-void LepEditor::updateStatBar(bool showCommandLine) {
+void LimEditor::updateStatBar(bool showCommandLine) {
   cout << "\033[s"; // Save cursor pos
   printf("\033[%d;0H\033[2K\r", winRows - 1);
   if (currentState == State::COMMAND || config.comline_visible) {
@@ -1804,14 +1804,14 @@ void LepEditor::updateStatBar(bool showCommandLine) {
   cout << "\033[0m\033[u" << flush;
 }
 
-void LepEditor::updateCommandBar() {
+void LimEditor::updateCommandBar() {
   printf("\033[%d;1H", winRows); // Move cursor to the last line
   cout << "\033[2K\r"; // Clear current line
   cout << comLineText;
   cout << "\033[0m" << flush;
 }
 
-void LepEditor::updateSelectedText() {
+void LimEditor::updateSelectedText() {
   if (currentState == State::VISUAL) {
     selectedText.eX = cX;
     selectedText.eY = cY;
@@ -1822,7 +1822,7 @@ void LepEditor::updateSelectedText() {
   }
 }
 
-void LepEditor::updateShowSelection() {
+void LimEditor::updateShowSelection() {
   if (selectedText.isNull()) return;
   textArea sel = selectedText;
   checkSelectionPoints(&sel);
@@ -1856,7 +1856,7 @@ void LepEditor::updateShowSelection() {
   cout << "\033[0m\033[u" << flush;
 }
 
-void LepEditor::clearSelectionUpdate() {
+void LimEditor::clearSelectionUpdate() {
   cY = selectedText.bY;
   cX = selectedText.bX;
   checkSelectionPoints(&selectedText);
@@ -1865,7 +1865,7 @@ void LepEditor::clearSelectionUpdate() {
   selectedText.clear();
 }
 
-void LepEditor::copySelection() {
+void LimEditor::copySelection() {
   if (selectedText.isNull()) return;
   checkSelectionPoints(&selectedText);
 
@@ -1887,7 +1887,7 @@ void LepEditor::copySelection() {
   clipboard.copyClip(clip);
 }
 
-void LepEditor::deleteSelection() {
+void LimEditor::deleteSelection() {
   if (selectedText.isNull()) return;
   unsaved = true;
   checkSelectionPoints(&selectedText);
@@ -1931,7 +1931,7 @@ void LepEditor::deleteSelection() {
   clearSelectionUpdate();
 }
 
-void LepEditor::checkSelectionPoints(textArea* selection) {
+void LimEditor::checkSelectionPoints(textArea* selection) {
   if (currentState == State::VISUAL) {
     if (selection->eY < selection->bY || 
         (selection->bY == selection->eY && selection->eX < selection->bX)) {
@@ -1948,19 +1948,19 @@ void LepEditor::checkSelectionPoints(textArea* selection) {
   }
 }
 
-void LepEditor::cpLine() {
+void LimEditor::cpLine() {
   Clip clip(true);
   clip.push_back(lines[cY]);
   clipboard.push_back(clip);
 }
 
-void LepEditor::cpLineEnd() {
+void LimEditor::cpLineEnd() {
   Clip clip;
   clip.push_back(lines[cY].substr(cX));
   clipboard.push_back(clip);
 }
 
-void LepEditor::delCpLine() {
+void LimEditor::delCpLine() {
   unsaved = true;
   cpLine();
   lines.erase(lines.begin() + cY);
@@ -1971,7 +1971,7 @@ void LepEditor::delCpLine() {
   }
 }
 
-void LepEditor::delCpLineEnd() {
+void LimEditor::delCpLineEnd() {
   unsaved = true;
   cpLineEnd();
   lines[cY].erase(cX);
@@ -1982,7 +1982,7 @@ void LepEditor::delCpLineEnd() {
   }
 }
 
-void LepEditor::pasteClipboard(int i) {
+void LimEditor::pasteClipboard(int i) {
   if (clipboard.empty()) return;
   if (i > 0 && i >= clipboard.size()) return;
   unsaved = true;
@@ -2021,7 +2021,7 @@ void LepEditor::pasteClipboard(int i) {
   syncCurPosOnScr();
 }
 
-void LepEditor::getWinSize() {
+void LimEditor::getWinSize() {
   struct winsize size;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1) {
     showErrorMsg(getPerrorString("Failed to get terminal window size"));
@@ -2035,7 +2035,7 @@ void LepEditor::getWinSize() {
   }
 }
 
-fstream* LepEditor::openFile(string fullPath, bool createIfNotFound) {
+fstream* LimEditor::openFile(string fullPath, bool createIfNotFound) {
   fstream* file = new fstream(fullPath);
 
   if(file->is_open()){
@@ -2050,7 +2050,7 @@ fstream* LepEditor::openFile(string fullPath, bool createIfNotFound) {
   return file;
 }
 
-void LepEditor::readFile(string fName, bool create) {
+void LimEditor::readFile(string fName, bool create) {
   fileName = fName;
   fstream* fptr = openFile(fullpath(), create);
   readToLines(fptr);
@@ -2061,7 +2061,7 @@ void LepEditor::readFile(string fName, bool create) {
   syncCurPosOnScr();
 }
 
-void LepEditor::readToLines(fstream *file) {
+void LimEditor::readToLines(fstream *file) {
   lines.clear();
   if (file->peek() == EOF) {
     lines.push_back("");
@@ -2073,7 +2073,7 @@ void LepEditor::readToLines(fstream *file) {
   }
 }
 
-void LepEditor::overwriteFile() {
+void LimEditor::overwriteFile() {
   if (lines.empty() || (lines.size() == 1 && lines.front().empty())) {
     unsaved = false;
     return;
@@ -2089,7 +2089,7 @@ void LepEditor::overwriteFile() {
   file.close();
 }
 
-void LepEditor::handleExit(bool force) {
+void LimEditor::handleExit(bool force) {
   if (unsaved && !force) {
     while(1) {
       string ans = queryUser("Unsaved changes. Save changes [y/n]:");
@@ -2105,11 +2105,11 @@ void LepEditor::handleExit(bool force) {
   if (ftree.isShown() && !curInFileTree) {
     closeCurFile();
   } else {
-    exitLep();
+    exitLim();
   }
 }
 
-void LepEditor::exitLep() {
+void LimEditor::exitLim() {
   system("clear");
   exit(0);
 }

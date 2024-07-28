@@ -1,5 +1,5 @@
 #include <termios.h>
-#include "../include/LepEditor.h"
+#include "../include/LimEditor.h"
 
 using namespace std;
 
@@ -20,24 +20,24 @@ void eRawMode() {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-void run(LepEditor* lep) {
+void run(LimEditor* lim) {
   while(1) {
-    switch (lep->currentState) {
+    switch (lim->currentState) {
       case State::INPUT:
-        lep->modeInput();
+        lim->modeInput();
         break;
 
       case State::COMMAND:
-        lep->modeCommand();
+        lim->modeCommand();
         break;
 
       case State::VLINE:
       case State::VISUAL:
-        lep->modeVisual();
+        lim->modeVisual();
         break;
   
       default:
-        lep->modeNormal();      
+        lim->modeNormal();      
         break;
     }
   }
@@ -53,10 +53,10 @@ int main(int argc, char** argv) {
     fileName = "";
   }
 
-  LepEditor lep;
-  lep.start(fileName);
+  LimEditor lim;
+  lim.start(fileName);
 
-  run(&lep);
+  run(&lim);
 
 	return 0;
 }

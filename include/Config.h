@@ -26,7 +26,7 @@ class Config {
     uint8_t b(uint32_t color);
 
   private:
-    const std::string fileName = ".lepconfig";
+    const std::string fileName = ".limconfig";
     std::string filePath = "./";
     std::fstream* openFile();
     void writeToConfFile(std::string v, std::string p);

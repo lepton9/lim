@@ -1,5 +1,5 @@
-#ifndef LEPEDITOR_H
-#define LEPEDITOR_H
+#ifndef LIMEDITOR_H
+#define LIMEDITOR_H
 
 #include <cstdint>
 #include <filesystem>
@@ -53,9 +53,9 @@ struct textArea {
 };
 
 
-class LepEditor : public ModeState {
+class LimEditor : public ModeState {
   public:
-    LepEditor();
+    LimEditor();
 
     void modeNormal();
     void modeInput();
@@ -65,7 +65,7 @@ class LepEditor : public ModeState {
 
   private:
     // Member function pointer type
-    typedef void (LepEditor::*functionP)(string);
+    typedef void (LimEditor::*functionP)(string);
     struct func {
         string name;
         functionP f;
@@ -99,12 +99,12 @@ class LepEditor : public ModeState {
 
     vector<char> validCommands = {'w', 'q', '!'};
     vector<func> functions = {
-      func("rename", &LepEditor::rename), 
-      func("restart", &LepEditor::restart), 
-      func("set", &LepEditor::set), 
-      func("setconfig", &LepEditor::setconfig),
-      func("configpath", &LepEditor::showConfigPath),
-      func("path", &LepEditor::showPath),
+      func("rename", &LimEditor::rename), 
+      func("restart", &LimEditor::restart), 
+      func("set", &LimEditor::set), 
+      func("setconfig", &LimEditor::setconfig),
+      func("configpath", &LimEditor::showConfigPath),
+      func("path", &LimEditor::showPath),
     };
 
     string path;
@@ -226,7 +226,7 @@ class LepEditor : public ModeState {
     void readToLines(fstream *file);
     void overwriteFile();
     void handleExit(bool force);
-    void exitLep();
+    void exitLim();
 };
 
 #endif

@@ -1,4 +1,4 @@
-# Lep
+# Lim
 A basic text editor written in C++.
 
 ## Commands
@@ -9,7 +9,7 @@ A basic text editor written in C++.
 :rename rename current file
 :restart restart editor
 :set change config file variables
-:setconfig set path to .lepconfig
+:setconfig set path to .limconfig
 :configpath to show the path to the config file
 :path to show the path of the current file or directory
 C+n to toggle file manager

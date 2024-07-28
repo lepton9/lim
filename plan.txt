@@ -1,6 +1,7 @@
 DONE:
 
 TODO:
+- make w,e,b work in visual mode
 - disable arrow keys
 - testing
 - undo tree
