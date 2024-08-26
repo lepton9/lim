@@ -1,6 +1,9 @@
 DONE:
 
 TODO:
+- :number not automatically highlighting the line number
+- highlighting on yy line yank
+- yanking multiple lines are pasted on one line
 - make w,e,b work in visual mode
 - disable arrow keys
 - testing
