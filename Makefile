@@ -18,7 +18,7 @@ debug:
 	gdb -tui $(BIN)/limDebug
 
 clean:
-	rm -rf $(OBJS)/*.o $(BIN)/limDebug
+	rm -rf $(OBJS)/*.o $(BIN)/*
 
 run:
 	$(BIN)/lim

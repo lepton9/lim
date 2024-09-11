@@ -1840,20 +1840,35 @@ void LimEditor::updateShowSelection() {
 
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
 
-  cout << "\033[s\033[7m"; // Inverse color
-  printf("\033[%d;%dH", marginTop + sel.bY - firstShownLine, marginLeft + padLeft + sel.bX);
+  fgColor(config.fg_color);
+  cout << "\033[7m"; // Inverse color
+  // cout << "\033[s\033[7m"; // Inverse color
+  printf("\033[%d;%dH", marginTop + sel.bY - firstShownLine, marginLeft + padLeft + ((firstShownCol > sel.bX) ? 0 : sel.bX - firstShownCol));
   if (sel.bY == sel.eY) {
-    cout << lines[sel.bY].substr(sel.bX, sel.eX-sel.bX + 1);
+    int hlBeg = (firstShownCol > sel.bX) ? firstShownCol : sel.bX;
+    int hlLen = ((sel.eX > firstShownCol + textAreaWidth()) ? firstShownCol + textAreaWidth() : sel.eX) - hlBeg;
+    cout << lines[sel.bY].substr(hlBeg, hlLen);
   } else {
-    cout << lines[sel.bY].substr(sel.bX) << "\033[1E";
+    int hlBeg = (firstShownCol > sel.bX) ? firstShownCol : sel.bX;
+    int hlLen = ((lines[sel.bY].length() > firstShownCol + textAreaWidth()) ? firstShownCol + textAreaWidth() : lines[sel.bY].length()) - hlBeg;
+    if (firstShownCol < lines[sel.bY].length()) {
+      cout << lines[sel.bY].substr(hlBeg, hlLen) << "\033[1E";
+    } else {
+      cout << "\033[1E";
+    }
     for (int i = sel.bY + 1; i < sel.eY; i++) {
       printf("\033[%dG", marginLeft + padLeft);
-      cout << lines[i] << "\033[1E";
+      printLine(i);
+      cout << "\033[7m";
     }
-      printf("\033[%dG", marginLeft + padLeft);
-    cout << lines[sel.eY].substr(0, sel.eX + 1);
+    printf("\033[%dG", marginLeft + padLeft);
+    if (firstShownCol < sel.eX) {
+      int hlLen = (sel.eX > firstShownCol + textAreaWidth()) ? textAreaWidth() : sel.eX - firstShownCol;
+      cout << lines[sel.eY].substr(firstShownCol, hlLen);
+    }
   }
-  cout << "\033[0m\033[u" << flush;
+  cout << "\033[0m" << flush;
+  // cout << "\033[0m\033[u" << flush;
 }
 
 void LimEditor::clearSelectionUpdate() {

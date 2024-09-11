@@ -1,6 +1,8 @@
 DONE:
+- visual highlight
 
 TODO:
+- multiline yank not pasting on dif lines
 - :number not automatically highlighting the line number
 - highlighting on yy line yank
 - yanking multiple lines are pasted on one line
