@@ -340,6 +340,33 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
 
+      case 'W': // Beginning of next word
+      case 'w':
+        gotoBegOfNext();
+        updateSelectedText();
+        break;
+      case 'E': // End of current word or next if at end of word
+      case 'e':
+        gotoEndOfNext();
+        updateSelectedText();
+        break;
+      case 'B': // Beginning of last word
+      case 'b':
+        gotoBegOfLast();
+        updateSelectedText();
+        break;
+      case 'g':
+        c = readKey();
+        if (c == 'g') {
+          goToFileBegin();
+          updateSelectedText();
+        }
+        break;
+      case 'G':
+        goToFileEnd();
+        updateSelectedText();
+        break;
+
       //Movement
       case 'h': case 'j': case 'k': case 'l':
       case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
@@ -1388,6 +1415,7 @@ bool LimEditor::execCommand() {
     const char* clt = com.c_str();
     int line = charToInt(clt);
     goToLine(--line);
+    updateLineNums(firstShownLine);
     return true;
   }
 

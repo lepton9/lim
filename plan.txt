@@ -1,10 +1,9 @@
 DONE:
-- multiline yank not pasting on dif lines
+- :number not automatically highlighting the line number
+- make w,e,b work in visual mode
 
 TODO:
-- :number not automatically highlighting the line number
 - highlighting on yy line yank
-- make w,e,b work in visual mode
 - disable arrow keys
 - testing
 - undo tree
