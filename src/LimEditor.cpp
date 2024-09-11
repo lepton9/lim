@@ -552,9 +552,13 @@ string LimEditor::queryUser(string query) {
 
 void LimEditor::inputChar(char c) {
   lines[cY].insert(cX, 1, c);
-  cout << "\033[1C" << flush;
   cX++;
-  updateRenderedLines(cY, 1);
+  if (cX > textAreaWidth() + firstShownCol) {
+    scrollRight();
+  } else {
+    cout << "\033[1C" << flush;
+    updateRenderedLines(cY, 1);
+  }
 }
 
 void LimEditor::newlineEscSeq() {
@@ -984,14 +988,14 @@ void LimEditor::curLeft() {
   }
 }
 
-void LimEditor::curRight() {      
+void LimEditor::curRight() {
   if (lines.empty()) {
     return;
   }
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   if (!curIsAtMaxPos()) {
     cX++;
-    if (cX - firstShownCol == winCols - marginLeft - padLeft && lines[cY].length() - 1 > cX) {
+    if (cX - firstShownCol >= textAreaWidth() && lines[cY].length() - 1 > cX) {
       scrollRight();
     } else {
       cout << "\033[1C" << flush;

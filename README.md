@@ -13,5 +13,5 @@ A basic text editor written in C++.
 :configpath to show the path to the config file
 :path to show the path of the current file or directory
 C+n to toggle file manager
-
+C+p + # to paste text from clipboard at index #
 ```
