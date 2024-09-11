@@ -4,14 +4,20 @@
 #include <vector>
 #include <string>
 
-class Clip : public std::vector<std::string> {
+class LineYank {
+  std::string line;
+  bool fullLine;
+  public:
+    LineYank();
+    LineYank(std::string line, bool fullLine);
+    bool isFullLine();
+    std::string text();
+};
+
+class Clip : public std::vector<LineYank> {
   public:
     Clip();
-    Clip(bool line);
-    void lineTrue();
-    bool isLine();
-  private:
-    bool line;
+    Clip(LineYank ly);
 };
 
 #endif

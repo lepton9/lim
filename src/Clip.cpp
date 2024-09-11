@@ -1,15 +1,26 @@
 #include "../include/Clip.h"
 
-Clip::Clip() {
-  line = false;
+LineYank::LineYank() {
+  fullLine = false;
+  line = "";
 }
 
-Clip::Clip(bool line) : line(line) {}
-
-void Clip::lineTrue() {
-  line = true;
+LineYank::LineYank(std::string line, bool fullLine) {
+  this->fullLine = fullLine;
+  this->line = line;
 }
 
-bool Clip::isLine() {
+bool LineYank::isFullLine() {
+  return fullLine;
+}
+
+std::string LineYank::text() {
   return line;
 }
+
+Clip::Clip() {}
+
+Clip::Clip(LineYank ly) {
+  this->push_back(ly);
+}
+

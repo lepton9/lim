@@ -1892,13 +1892,13 @@ void LimEditor::copySelection() {
     if (i == selectedText.eY) {
       len = (endX == lines[i].length()) ? lines[i].length() - startX : endX - startX + 1;
     }
-    clip.push_back(lines[i].substr(startX, len));
+    clip.push_back(LineYank(lines[i].substr(startX, len), len == lines[i].length()));
     startX = 0;
   }
-  if (clip.size() == 1 && clip.front().length() == lines[selectedText.bY].length() 
-      && selectedText.eX == lines[selectedText.bY].length()) {
-    clip.lineTrue();
-  }
+  // if (clip.size() == 1 && clip.front().length() == lines[selectedText.bY].length() 
+  //     && selectedText.eX == lines[selectedText.bY].length()) {
+  //   clip.lineTrue();
+  // }
   clipboard.copyClip(clip);
 }
 
@@ -1964,14 +1964,14 @@ void LimEditor::checkSelectionPoints(textArea* selection) {
 }
 
 void LimEditor::cpLine() {
-  Clip clip(true);
-  clip.push_back(lines[cY]);
+  Clip clip;
+  clip.push_back(LineYank(lines[cY], true));
   clipboard.push_back(clip);
 }
 
 void LimEditor::cpLineEnd() {
   Clip clip;
-  clip.push_back(lines[cY].substr(cX));
+  clip.push_back(LineYank(lines[cY].substr(cX), false));
   clipboard.push_back(clip);
 }
 
@@ -2005,22 +2005,24 @@ void LimEditor::pasteClipboard(int i) {
 
   string remain = "";
   Clip* clip = (i < 0) ? &clipboard[clipboard.size()-1] : &clipboard[i];
-  for (string line : *clip) {
-    if (lines[cY].empty()) {
-      lines[cY] = line;
-      cX = (line == "") ? 0 : maxPosOfLine(cY);
-    }
-    else if (clip->isLine()) {
-      lines.insert(lines.begin() + cY + 1, line);
+  int l = 0;
+  for (LineYank line: *clip) {
+    if (line.isFullLine() || l > 0) {
+      lines.insert(lines.begin() + cY + 1, line.text());
       cY++;
       cX = minPosOfLineIWS(cY);
+    }
+    else if (lines[cY].empty()) {
+      lines[cY] = line.text();
+      cX = (line.text() == "") ? 0 : maxPosOfLine(cY);
     }
     else {
       remain = lines[cY].substr(cX + 1);
       lines[cY].erase(cX + 1);
-      lines[cY].append(line);
+      lines[cY].append(line.text());
       cX = maxPosOfLine(cY);
     }
+    l++;
   }
   lines[cY].append(remain);
 
