@@ -1,4 +1,5 @@
 #include "../include/LimEditor.h"
+#include <assert.h>
 
 using namespace std;
 
@@ -1238,7 +1239,8 @@ void LimEditor::searchStrOnCur() {
     searchStr = "";
     return;
   }
-  if (searchForMatches() > 0) {
+  int matches = searchForMatches();
+  if (matches > 0) {
     curMatch = getMatchClosestToCur();
     gotoNextMatch();
     highlightMatches();
@@ -1260,12 +1262,13 @@ int LimEditor::searchForMatches() {
 
 void LimEditor::highlightMatches() {
   if (matches.empty()) return;
+  int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   cout << "\033[s";
   for (int i = 0; i < matches.size(); i++) {
     if (matches[i].y < firstShownLine) continue;
     else if (matches[i].y > firstShownLine + textAreaLength()) break;
     else {
-      printf("\033[%d;%dH", matches[i].y - firstShownLine + marginTop, matches[i].x + marginLeft);
+      printf("\033[%d;%dH", matches[i].y - firstShownLine + marginTop, matches[i].x + marginLeft + padLeft);
       cout << "\033[7m" << searchStr << "\033[0m";
     }
   }
@@ -1286,7 +1289,7 @@ int LimEditor::getMatchClosestToCur() {
 
 void LimEditor::gotoNextMatch() {
   if (matches.empty()) return;
-  if ( curMatch > 0 && curMatch >= matches.size() - 1) {
+  if (curMatch >= matches.size() - 1) {
     curMatch = 0;
   } 
   else if (curMatch < 0) {
