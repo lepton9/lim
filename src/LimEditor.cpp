@@ -1810,32 +1810,31 @@ void LimEditor::updateStatBar(bool showCommandLine) {
     printf("\033[%d;0H", winRows); // Move cursor to the last line
   }
   cout << "\033[2K\r"; // Clear current line
-  bgColor(config.sb_bg_color);
-  fgColor(config.sb_fg_color);
   string mode;
-  if (currentState == State::INPUT) mode = " INPUT";
-  else if (currentState == State::COMMAND) mode = " COMMAND";
-  else if (currentState == State::VISUAL) mode = " VISUAL";
-  else if (currentState == State::VLINE) mode = " V-LINE";
-  else mode = " NORMAL";
+  if (currentState == State::INPUT) mode = "\033[42m INPUT \033[0m";
+  else if (currentState == State::COMMAND) mode = "\033[43m COMMAND \033[0m";
+  else if (currentState == State::VISUAL) mode = "\033[45m VISUAL \033[0m";
+  else if (currentState == State::VLINE) mode = "\033[45m V-LINE \033[0m";
+  else mode = "\033[44m NORMAL \033[0m";
   string saveText = " s ";
   string saveStatus;
   if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
   else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
-  string eInfo = mode + " | " + fileName + " " + saveStatus;
+  string eInfo = "| " + fileName + " " + saveStatus;
   string curInfo = to_string(cY + 1) + ", " + to_string(cX + 1) + " ";
  
-  int fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+  int fillerSpace = winCols - mode.length() - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
 
   if (fillerSpace < 0) {
-    eInfo = mode + " | " + saveStatus;
-    fillerSpace = winCols - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+    eInfo = "| " + saveStatus;
+    fillerSpace = winCols - mode.length() - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
     fillerSpace = (fillerSpace < 0) ? 0 : fillerSpace;
   }
 
-  cout << eInfo;
+  cout << mode;
   bgColor(config.sb_bg_color);
   fgColor(config.sb_fg_color);
+  cout << eInfo;
   cout << string(fillerSpace, ' ') << curInfo;
   cout << "\033[0m\033[u" << flush;
 }
