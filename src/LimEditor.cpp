@@ -13,7 +13,7 @@ LimEditor::LimEditor() {
 }
 
 void LimEditor::modeNormal() {
-  updateStatBar();
+  // updateStatBar();
 
   if (fileOpen && curIsAtMaxPos()) {
     cX = maxPosOfLine(cY);
@@ -159,6 +159,7 @@ void LimEditor::modeNormal() {
         break;
       case 14: // C-n
         ftree.toggleShow();
+        curInFileTree = true;
         renderFiletree();
         break;
       case 8: // C-h
@@ -1388,13 +1389,13 @@ bool LimEditor::execBashCommand(string com) {
   FILE* fpipe;
   char c = 0;
   string msg = "";
+  string clText = comLineText;
 
-  while (true) {
-    if (com == "") {
-      com = queryUser(comLineText);
-      if (com == "") break;
-    }
+  if (com == "") {
+    com = queryUser(comLineText);
+  }
 
+  if (com != "") {
     fpipe = (FILE*)popen(com.c_str(), "r");
     if (fpipe == 0) {
       showErrorMsg(com + " failed");
@@ -1405,12 +1406,13 @@ bool LimEditor::execBashCommand(string com) {
       }
       showMsg(msg);
       ret = true;
+      int status = pclose(fpipe);
     }
-    com = "";
   }
+  readKey(); // Press any key to clean the output
+  comLineText = clText;
 
-  int status = pclose(fpipe);
-  clsResetCur();
+  // clsResetCur();
   renderFiletree();
   renderShownText(firstShownLine);
   syncCurPosOnScr();
@@ -1737,8 +1739,6 @@ void LimEditor::renderFiletree() {
     syncCurPosOnScr();
     return;
   }
-
-  curInFileTree = true;
 
   printf("\033[%d;0H", marginTop);
   for (int i = firstShownFile; i < ftree.tree.size() && i <= textAreaLength() + firstShownFile; i++) {

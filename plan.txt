@@ -1,7 +1,8 @@
 DONE:
-- different modes have different colors on statusbar
+- double output from bash commands
 
 TODO:
+- fix input commands in filetree
 - command help box for multikey commands
   - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - highlighting on yy line yank
