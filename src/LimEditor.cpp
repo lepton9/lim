@@ -32,9 +32,13 @@ void LimEditor::modeNormal() {
         }
         handleEvent(Event::BACK);
         break;
+      case 9: // Tab
       case 10:
         if (curInFileTree) {
           fTreeSelect();
+          curInFileTree = (c == 9);
+          syncCurPosOnScr();
+          renderShownText(firstShownLine);
         }
         break;
       case 'i':
@@ -48,7 +52,7 @@ void LimEditor::modeNormal() {
         handleEvent(Event::INPUT);
         if (!curIsAtMaxPos()) curRight();
         break;
-      case 'r': //TODO: rename file on cur
+      case 'r':
         if (curInFileTree) {
           renameFileOnCur();
         }
@@ -718,9 +722,6 @@ void LimEditor::fTreeSelect() {
     readFile(ftree.getElementOnCur()->name);
     firstShownLine = 0;
     cX = 0, cY = 0;
-    curInFileTree = false;
-    syncCurPosOnScr();
-    renderShownText(firstShownLine);
   }
 }
 
