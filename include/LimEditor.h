@@ -206,6 +206,7 @@ class LimEditor : public ModeState {
     void renderFiletree();
     void fillEmptyTreeLines();
     string fileTreeLine(int i);
+    void showInfoText(vector<string> textLines, int height);
     void updateFTreeHighlight(int curL, int lastL);
     void updateStatBar(bool showCommandLine = false);
     void updateCommandBar();
@@ -219,7 +220,7 @@ class LimEditor : public ModeState {
     void cpLineEnd();
     void delCpLine();
     void delCpLineEnd();
-    void pasteClipboard(int i = -1);
+    void pasteClipboard(int i = 0);
     void getWinSize();
     fstream* openFile(string fullPath, bool createIfNotFound);
     void readFile(string fName, bool create = false);

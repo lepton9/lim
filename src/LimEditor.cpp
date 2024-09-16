@@ -1,5 +1,4 @@
 #include "../include/LimEditor.h"
-#include <assert.h>
 
 using namespace std;
 
@@ -42,6 +41,7 @@ void LimEditor::modeNormal() {
         }
         break;
       case 'i':
+        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         break;
       case 'a':
@@ -58,11 +58,13 @@ void LimEditor::modeNormal() {
         }
         break;
       case 'I':
+        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         cX = minPosOfLineIWS(cY);
         syncCurPosOnScr();
         break;
       case 'A':
+        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         cX = maxPosOfLine(cY);
         syncCurPosOnScr();
@@ -127,12 +129,14 @@ void LimEditor::modeNormal() {
         gotoBegOfLast();
         break;
       case 'g':
+        if (curInFileTree) break;
         c = readKey();
         if (c == 'g') {
           goToFileBegin();
         }
         break;
       case 'G':
+        if (curInFileTree) break;
         goToFileEnd();
         break;
       case 'd':
@@ -146,15 +150,18 @@ void LimEditor::modeNormal() {
         }
         break;
       case 'D':
+        if (curInFileTree) break;
         delCpLineEnd();
         break;
       case 'y':
+        if (curInFileTree) break;
         c = readKey();
         if (c == 'y') {
           cpLine();
         }
         break;
       case 'Y':
+        if (curInFileTree) break;
         cpLineEnd();
         break;
       case 14: // C-n
@@ -174,13 +181,23 @@ void LimEditor::modeNormal() {
           syncCurPosOnScr();
         }
         break;
-      case 16: // C-p + #, paste from clipboard at index #
+      case 16: { // C-p + #, paste from clipboard at index #
+        vector<string> lines;
+        string nl = "\033[90m\\n\033[0m";
+        for (int i = 0; i < clipboard.size(); i++) {
+            lines.push_back("\033[34m" + to_string(i) + "\033[0m" + ": " + ((clipboard[i].front().isFullLine()) ? nl : "") + clipboard[i].front().text() + ((clipboard[i].front().isFullLine()) ? nl : "") + ((clipboard[i].size() > 1) ? (clipboard[i].size() == 2 && clipboard[i].back().text() == "") ? nl : " [" + to_string(clipboard[i].size()) + "L]" : ""));
+        }
+        showInfoText(lines, lines.size());
         c = readKey();
+        renderFiletree();
+        renderShownText(firstShownLine);
+        syncCurPosOnScr();
         if (isdigit(c)) {
           int d = c - 48; // 48 => 0
-          pasteClipboard((d - 1 < 0) ? 9 : d - 1);
+          pasteClipboard((d < 0) ? clipboard.size() - 1 : d);
         }
         break;
+      }
 
       //Movement
       case 'h': case 'j': case 'k': case 'l':
@@ -1792,6 +1809,23 @@ string LimEditor::fileTreeLine(int i) {
   return ret;
 }
 
+void LimEditor::showInfoText(vector<string> textLines, int height) {
+  int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 1;
+  int maxHeight = textAreaLength();
+  string border(textAreaWidth() + marginLeft + (ftree.isShown() ? 1 : 0), '_');
+  cout << "\033[s";
+  printf("\033[%d;0H", marginTop + textAreaLength() - 1 - ((height < maxHeight) ? height : maxHeight));
+  printf("\033[%dG%s\033[1E", padLeft, border.c_str());
+  for (int i = 0; i < textLines.size() && i < maxHeight; i++) {
+    printf("\033[%dG", padLeft);
+    cout << "\033[0K  " << textLines[i] << "\033[1E";
+  }
+  printf("\033[%dG%s\033[1E", padLeft, border.c_str());
+  cout << "\033[u";
+  fflush(stdout);
+  // readKey();
+}
+
 void LimEditor::updateFTreeHighlight(int curL, int lastL) {
   printf("\033[%d;%dH\033[1K\033[0G", marginTop + curL - firstShownFile, ftree.treeWidth);
   cout << fileTreeLine(curL) << "\033[1E";
@@ -1811,11 +1845,27 @@ void LimEditor::updateStatBar(bool showCommandLine) {
   }
   cout << "\033[2K\r"; // Clear current line
   string mode;
-  if (currentState == State::INPUT) mode = "\033[42m INPUT \033[0m";
-  else if (currentState == State::COMMAND) mode = "\033[43m COMMAND \033[0m";
-  else if (currentState == State::VISUAL) mode = "\033[45m VISUAL \033[0m";
-  else if (currentState == State::VLINE) mode = "\033[45m V-LINE \033[0m";
-  else mode = "\033[44m NORMAL \033[0m";
+  string modeText;
+  if (currentState == State::INPUT) {
+    modeText = " INPUT ";
+    mode = "\033[30;42m" + modeText + "\033[0m";
+  }
+  else if (currentState == State::COMMAND) {
+    modeText = " COMMAND ";
+    mode = "\033[30;43m" + modeText + "\033[0m";
+  }
+  else if (currentState == State::VISUAL) {
+    modeText = " VISUAL ";
+    mode = "\033[30;45m" + modeText + "\033[0m";
+  }
+  else if (currentState == State::VLINE) {
+    modeText = " V-LINE ";
+    mode = "\033[30;45m" + modeText + "\033[0m";
+  }
+  else {
+    modeText = " NORMAL ";
+    mode = "\033[30;44m" + modeText + "\033[0m";
+  }
   string saveText = " s ";
   string saveStatus;
   if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
@@ -1823,7 +1873,7 @@ void LimEditor::updateStatBar(bool showCommandLine) {
   string eInfo = "| " + fileName + " " + saveStatus;
   string curInfo = to_string(cY + 1) + ", " + to_string(cX + 1) + " ";
  
-  int fillerSpace = winCols - mode.length() - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
+  int fillerSpace = winCols - modeText.length() - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
 
   if (fillerSpace < 0) {
     eInfo = "| " + saveStatus;
@@ -1925,15 +1975,14 @@ void LimEditor::copySelection() {
   for (int i = selectedText.bY; i <= selectedText.eY; i++) {
     int len = lines[i].length() - startX;
     if (i == selectedText.eY) {
-      len = (endX == lines[i].length()) ? lines[i].length() - startX : endX - startX + 1;
+      len = ((endX >= lines[i].length()) ? lines[i].length() : endX + 1) - startX;
     }
-    clip.push_back(LineYank(lines[i].substr(startX, len), len == lines[i].length()));
+    clip.push_back(LineYank(lines[i].substr(startX, len), currentState == State::VLINE));
     startX = 0;
   }
-  // if (clip.size() == 1 && clip.front().length() == lines[selectedText.bY].length() 
-  //     && selectedText.eX == lines[selectedText.bY].length()) {
-  //   clip.lineTrue();
-  // }
+  if (endX >= lines[selectedText.eY].length() && !lines[selectedText.eY].empty() && currentState == State::VISUAL) {
+    clip.push_back(LineYank("", false)); // \n
+  }
   clipboard.copyClip(clip);
 }
 
@@ -2001,13 +2050,14 @@ void LimEditor::checkSelectionPoints(textArea* selection) {
 void LimEditor::cpLine() {
   Clip clip;
   clip.push_back(LineYank(lines[cY], true));
-  clipboard.push_back(clip);
+  clipboard.copyClip(clip);
 }
 
 void LimEditor::cpLineEnd() {
   Clip clip;
   clip.push_back(LineYank(lines[cY].substr(cX), false));
-  clipboard.push_back(clip);
+  clip.push_back(LineYank("", false));
+  clipboard.copyClip(clip);
 }
 
 void LimEditor::delCpLine() {
@@ -2034,7 +2084,7 @@ void LimEditor::delCpLineEnd() {
 
 void LimEditor::pasteClipboard(int i) {
   if (clipboard.empty()) return;
-  if (i > 0 && i >= clipboard.size()) return;
+  if (i >= clipboard.size()) return;
   unsaved = true;
   int begY = cY;
 
@@ -2165,5 +2215,4 @@ void LimEditor::exitLim() {
   system("clear");
   exit(0);
 }
-
 

@@ -1,11 +1,9 @@
 #include "../include/Clipboard.h"
-#include <cstddef>
-
 
 void Clipboard::copyClip(Clip clip) {
   if (size() >= maxSize) {
-    erase(begin());
+    pop_back();
   }
-  push_back(clip);
+  insert(this->begin(), clip);
 }
 
