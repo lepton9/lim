@@ -1,5 +1,10 @@
 # Lim
-A basic text editor written in C++.
+
+![Commit](https://img.shields.io/github/last-commit/lepton9/lim)
+![GitHub top language](https://img.shields.io/github/languages/top/lepton9/lim)
+![Lines](https://tokei.rs/b1/github/lepton9/lim)
+
+A basic Vim-like text editor.
 
 ## Commands
 ``` Console

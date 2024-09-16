@@ -1,7 +1,4 @@
 DONE:
-- fix input commands in filetree
-- area to show info
-- clipboard fixes
 
 TODO:
 - command help box for multikey commands
