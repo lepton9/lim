@@ -62,6 +62,7 @@ class LimEditor : public ModeState {
     void modeCommand();
     void modeVisual();
     void start(string fName);
+    bool exitFlag();
 
   private:
     // Member function pointer type
@@ -82,6 +83,7 @@ class LimEditor : public ModeState {
     int firstShownFile = 0;
     vector<string> lines;
     bool unsaved;
+    bool exitf;
 
     string searchStr;
     vector<pos> matches;

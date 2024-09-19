@@ -1,4 +1,5 @@
 #include <termios.h>
+#include <signal.h>
 #include "../include/LimEditor.h"
 
 using namespace std;
@@ -21,7 +22,7 @@ void eRawMode() {
 }
 
 void run(LimEditor* lim) {
-  while(1) {
+  while(!lim->exitFlag()) {
     switch (lim->currentState) {
       case State::INPUT:
         lim->modeInput();
@@ -35,17 +36,19 @@ void run(LimEditor* lim) {
       case State::VISUAL:
         lim->modeVisual();
         break;
-  
+
       default:
-        lim->modeNormal();      
+        lim->modeNormal();
         break;
     }
   }
 }
 
 int main(int argc, char** argv) {
-	system("clear");
-	eRawMode();
+  printf("\033[?1049h"); // Alternative screen buffer
+  printf("\033[2J");
+  eRawMode();
+  signal(SIGINT, SIG_IGN); // Ctrl-c
 
   string fileName;
   if (argc >= 2) fileName = argv[1];
@@ -55,9 +58,9 @@ int main(int argc, char** argv) {
 
   LimEditor lim;
   lim.start(fileName);
-
   run(&lim);
 
-	return 0;
+  printf("\033[?1049l"); // Disable alternative buffer
+  return 0;
 }
 

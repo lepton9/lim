@@ -1,4 +1,5 @@
 #include "../include/LimEditor.h"
+#include <csignal>
 
 using namespace std;
 
@@ -408,6 +409,7 @@ string LimEditor::fullpath() {
 }
 
 void LimEditor::start(string fName) {
+  exitf = false;
   path = filesystem::current_path();
   ftree = Filetree(path);
   if (fName == "") {
@@ -2211,8 +2213,11 @@ void LimEditor::handleExit(bool force) {
   }
 }
 
+bool LimEditor::exitFlag() {
+  return exitf;
+}
+
 void LimEditor::exitLim() {
-  system("clear");
-  exit(0);
+  exitf = true;
 }
 
