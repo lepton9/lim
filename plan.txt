@@ -1,6 +1,9 @@
 DONE:
+- cut yanks in help box to fit screen
 
 TODO:
+- show inputted keys at bottom right
+- don't erase earlier bash output when opening lim
 - command help box for multikey commands
   - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence
 - highlighting on yy line yank

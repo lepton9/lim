@@ -185,7 +185,7 @@ void LimEditor::modeNormal() {
         vector<string> lines;
         string nl = "\033[90m\\n\033[0m";
         for (int i = 0; i < clipboard.size(); i++) {
-            lines.push_back("\033[34m" + to_string(i) + "\033[0m" + ": " + ((clipboard[i].front().isFullLine()) ? nl : "") + clipboard[i].front().text() + ((clipboard[i].front().isFullLine()) ? nl : "") + ((clipboard[i].size() > 1) ? (clipboard[i].size() == 2 && clipboard[i].back().text() == "") ? nl : " [" + to_string(clipboard[i].size()) + "L]" : ""));
+            lines.push_back("\033[34m" + to_string(i) + "\033[0m" + ": " + ((clipboard[i].front().isFullLine()) ? nl : "") + clipboard[i].front().text().substr(0, textAreaWidth() - 10) + ((clipboard[i].front().isFullLine()) ? nl : "") + ((clipboard[i].size() > 1) ? (clipboard[i].size() == 2 && clipboard[i].back().text() == "") ? nl : " [" + to_string(clipboard[i].size()) + "L]" : ""));
         }
         showInfoText(lines, lines.size());
         c = readKey();
