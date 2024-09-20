@@ -90,6 +90,7 @@ bool Config::handleKeyValue(std::string key, std::string value) {
 
 void Config::parse() {
   setDefault();
+  findConfig();
   std::fstream* file = openFile();
   if (!file) return;
   if (file->peek() == EOF) return;
@@ -158,6 +159,18 @@ bool Config::setFilePath(std::string path) {
   setDefault();
   parse();
   return ret;
+}
+
+void Config::findConfig() {
+  for (std::string p : defaultPaths) {
+    std::string path = p + fileName;
+    std::ifstream f(path.c_str());
+    if (FILE *file = fopen(path.c_str(), "r")) {
+      fclose(file);
+      filePath = p;
+      return;
+    }
+  }
 }
 
 std::string Config::getFilePath() {

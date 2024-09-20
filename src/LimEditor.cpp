@@ -1,5 +1,4 @@
 #include "../include/LimEditor.h"
-#include <csignal>
 
 using namespace std;
 
@@ -544,6 +543,29 @@ void LimEditor::confirmRename(string newName) {
 
 void LimEditor::showPath(string args) {
   showMsg(fullpath());
+  syncCurPosOnScr();
+}
+
+void LimEditor::help(string arg) {
+  vector<string> helpText;
+  for (func f : functions) {
+    char line[128];
+    sprintf(line, ":%-20s | %s", f.name.c_str(), f.info.c_str());
+    helpText.push_back(string(line));
+  }
+  helpText.push_back("");
+  helpText.push_back("Searching and replacing:");
+  char line[128];
+  sprintf(line, ":%-20s | %s", "/\'string\'", "search for matches (C-f)");
+  helpText.push_back(string(line));
+  sprintf(line, ":%-20s | %s", "r/'s1'/'s2'", "replace s1 with s2");
+  helpText.push_back(string(line));
+  sprintf(line, ":%-20s | %s", "r 'string'", "replace all found matches");
+  helpText.push_back(string(line));
+  showInfoText(helpText, helpText.size());
+  char c = readKey();
+  renderFiletree();
+  renderShownText(firstShownLine);
   syncCurPosOnScr();
 }
 
@@ -1816,7 +1838,7 @@ void LimEditor::showInfoText(vector<string> textLines, int height) {
   int maxHeight = textAreaLength();
   string border(textAreaWidth() + marginLeft + (ftree.isShown() ? 1 : 0), '_');
   cout << "\033[s";
-  printf("\033[%d;0H", marginTop + textAreaLength() - 1 - ((height < maxHeight) ? height : maxHeight));
+  printf("\033[%d;0H", marginTop + textAreaLength() - ((config.comline_visible) ? 1 : 0) - ((height < maxHeight) ? height : maxHeight));
   printf("\033[%dG%s\033[1E", padLeft, border.c_str());
   for (int i = 0; i < textLines.size() && i < maxHeight; i++) {
     printf("\033[%dG", padLeft);

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <fstream>
+#include <vector>
 
 class Config {
   public:
@@ -27,7 +28,9 @@ class Config {
 
   private:
     const std::string fileName = ".limconfig";
+    std::vector<std::string> defaultPaths = {"./", "~/.config/lim/"};
     std::string filePath = "./";
+    void findConfig();
     std::fstream* openFile();
     void writeToConfFile(std::string v, std::string p);
     bool handleKeyValue(std::string key, std::string value);

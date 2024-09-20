@@ -1,8 +1,6 @@
 DONE:
-- creates new buffer for lim
 
 TODO:
-- :help command
 - show inputted keys at bottom right
 - command help box for multikey commands
   - after a key press in normal mode and nothing pressed within time show all possible commands from the current sequence

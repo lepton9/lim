@@ -69,8 +69,10 @@ class LimEditor : public ModeState {
     typedef void (LimEditor::*functionP)(string);
     struct func {
         string name;
+        string info;
         functionP f;
-        func(string n, functionP fp) : name(n), f(fp) {}
+        func(string n, functionP fp) : name(n), f(fp), info("") {};
+        func(string n, string i, functionP fp) : name(n), info(i), f(fp) {};
     };
 
     int marginLeft = 7;
@@ -101,12 +103,13 @@ class LimEditor : public ModeState {
 
     vector<char> validCommands = {'w', 'q', '!'};
     vector<func> functions = {
-      func("rename", &LimEditor::rename), 
-      func("restart", &LimEditor::restart), 
-      func("set", &LimEditor::set), 
-      func("setconfig", &LimEditor::setconfig),
-      func("configpath", &LimEditor::showConfigPath),
-      func("path", &LimEditor::showPath),
+      func("rename", "rename the current file", &LimEditor::rename),
+      func("restart", "restart Lim", &LimEditor::restart),
+      func("set", "change config variable", &LimEditor::set),
+      func("setconfig", "set path to .limconfig", &LimEditor::setconfig),
+      func("configpath", "show current config file path", &LimEditor::showConfigPath),
+      func("path", "show path of the current file or directory", &LimEditor::showPath),
+      func("help", "help", &LimEditor::help),
     };
 
     string path;
@@ -124,6 +127,7 @@ class LimEditor : public ModeState {
     void set(string var);
     void restart(string p);
     void showPath(string args);
+    void help(string arg);
     void confirmRename(string newName);
     void inputChar(char c);
     string queryUser(string query);
