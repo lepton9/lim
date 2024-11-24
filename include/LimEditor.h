@@ -99,7 +99,7 @@ class LimEditor : public ModeState {
     vector<string> oldCommands;
     Clipboard clipboard;
     textArea selectedText;
-    int cX, cY;
+    pos cur;
 
     vector<char> validCommands = {'w', 'q', '!'};
     vector<func> functions = {

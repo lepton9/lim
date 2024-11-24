@@ -5,8 +5,7 @@ using namespace std;
 
 LimEditor::LimEditor() {
   unsaved = false;
-  cX = 0;
-  cY = 0;
+  cur = {0, 0};
   getWinSize();
   readConfig();
 }
@@ -15,7 +14,7 @@ void LimEditor::modeNormal() {
   // updateStatBar();
 
   if (fileOpen && curIsAtMaxPos()) {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
     syncCurPosOnScr();
   }
 
@@ -60,13 +59,13 @@ void LimEditor::modeNormal() {
       case 'I':
         if (curInFileTree) break;
         handleEvent(Event::INPUT);
-        cX = minPosOfLineIWS(cY);
+        cur.x = minPosOfLineIWS(cur.y);
         syncCurPosOnScr();
         break;
       case 'A':
         if (curInFileTree) break;
         handleEvent(Event::INPUT);
-        cX = maxPosOfLine(cY);
+        cur.x = maxPosOfLine(cur.y);
         syncCurPosOnScr();
         break;
       case ':':
@@ -336,16 +335,16 @@ void LimEditor::modeCommand() {
 
 void LimEditor::modeVisual() {
   if (currentState == State::VISUAL) {
-    selectedText.bX = cX;
-    selectedText.bY = cY;
-    selectedText.eX = cX;
-    selectedText.eY = cY;
+    selectedText.bX = cur.x;
+    selectedText.bY = cur.y;
+    selectedText.eX = cur.x;
+    selectedText.eY = cur.y;
   }
   else if (currentState == State::VLINE) {
     selectedText.bX = 0;
-    selectedText.bY = cY;
-    selectedText.eX = lines[cY].length();
-    selectedText.eY = cY;
+    selectedText.bY = cur.y;
+    selectedText.eX = lines[cur.y].length();
+    selectedText.eY = cur.y;
   }
 
   getWinSize();
@@ -379,7 +378,7 @@ void LimEditor::modeVisual() {
       case 'p':
         if (!clipboard.empty()) {
           deleteSelection();
-          cX--;
+          cur.x--;
           pasteClipboard();
         }
         handleEvent(Event::BACK);
@@ -620,72 +619,72 @@ string LimEditor::queryUser(string query) {
 }
 
 void LimEditor::inputChar(char c) {
-  lines[cY].insert(cX, 1, c);
-  cX++;
-  if (cX > textAreaWidth() + firstShownCol) {
+  lines[cur.y].insert(cur.x, 1, c);
+  cur.x++;
+  if (cur.x > textAreaWidth() + firstShownCol) {
     scrollRight();
   } else {
     cout << "\033[1C" << flush;
-    updateRenderedLines(cY, 1);
+    updateRenderedLines(cur.y, 1);
   }
 }
 
 void LimEditor::newlineEscSeq() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-  string newLine = lines[cY].substr(cX);
-  lines[cY].erase(cX);
-  cY++;
-  lines.insert(lines.begin() + cY, newLine);
-  cX = 0;
-  if (cY-1 == firstShownLine + winRows - 2 - marginTop) {
+  string newLine = lines[cur.y].substr(cur.x);
+  lines[cur.y].erase(cur.x);
+  cur.y++;
+  lines.insert(lines.begin() + cur.y, newLine);
+  cur.x = 0;
+  if (cur.y-1 == firstShownLine + winRows - 2 - marginTop) {
     scrollDown();
     printf("\033[%dG", marginLeft + padLeft);
   } else {
     printf("\033[1E\033[%dG", marginLeft + padLeft);
   }
   fflush(stdout);
-  updateRenderedLines(cY-1);
+  updateRenderedLines(cur.y-1);
 }
 
 void LimEditor::tabKey() {
-  lines[cY].insert(cX, string(config.indentAm, ' '));
-  cX += config.indentAm;
+  lines[cur.y].insert(cur.x, string(config.indentAm, ' '));
+  cur.x += config.indentAm;
   printf("\033[%dC", config.indentAm);
   fflush(stdout);
-  updateRenderedLines(cY, 1);
+  updateRenderedLines(cur.y, 1);
 }
 
 void LimEditor::backspaceKey() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   int ePos;
-  if (cX == 0) {
-    if (cY == 0) return;
-    string delLine = lines[cY];
-    lines.erase(lines.begin() + cY, lines.begin() + cY + 1);
-    cY--;
-    cX = lines[cY].length();
-    lines[cY].append(delLine);
-    printf("\033[1A\033[%dG", cX + marginLeft + padLeft);
-    updateRenderedLines(cY);
+  if (cur.x == 0) {
+    if (cur.y == 0) return;
+    string delLine = lines[cur.y];
+    lines.erase(lines.begin() + cur.y, lines.begin() + cur.y + 1);
+    cur.y--;
+    cur.x = lines[cur.y].length();
+    lines[cur.y].append(delLine);
+    printf("\033[1A\033[%dG", cur.x + marginLeft + padLeft);
+    updateRenderedLines(cur.y);
   } else {
-    lines[cY].erase(cX - 1, 1);
-    cX--;
+    lines[cur.y].erase(cur.x - 1, 1);
+    cur.x--;
     printf("\033[1D");
-    updateRenderedLines(cY, 1);
+    updateRenderedLines(cur.y, 1);
   }
   fflush(stdout);
 }
 
 void LimEditor::deleteKey() {
-  if (cX == lines[cY].length()) {
-    if (cY == lines.size()-1) return;
-    string delLine = lines[cY+1];
-    lines.erase(lines.begin() + cY + 1);
-    lines[cY] += delLine;
-    updateRenderedLines(cY);
+  if (cur.x == lines[cur.y].length()) {
+    if (cur.y == lines.size()-1) return;
+    string delLine = lines[cur.y+1];
+    lines.erase(lines.begin() + cur.y + 1);
+    lines[cur.y] += delLine;
+    updateRenderedLines(cur.y);
   } else {
-    lines[cY].erase(cX, 1);
-    updateRenderedLines(cY, 1);
+    lines[cur.y].erase(cur.x, 1);
+    updateRenderedLines(cur.y, 1);
   }
 }
 
@@ -785,7 +784,7 @@ void LimEditor::fTreeSelect() {
     path = ftree.getElementOnCur()->path.parent_path();
     readFile(ftree.getElementOnCur()->name);
     firstShownLine = 0;
-    cX = 0, cY = 0;
+    cur.x = 0, cur.y = 0;
   }
 }
 
@@ -962,12 +961,12 @@ void LimEditor::curMove(int c) {
     gotoBegOfLastInner();
   } else if (c == 'J') {
     if (firstShownLine + textAreaLength() < lines.size() - 1) {
-      cY++;
+      cur.y++;
       scrollDown();
     }
   } else if (c == 'K') {
     if (firstShownLine > 0) {
-      cY--;
+      cur.y--;
       scrollUp();
     }
   } else if (c == 'L') {
@@ -981,22 +980,22 @@ void LimEditor::curUp() {
   if (lines.empty()) {
     return;
   }
-  if (cY > 0) {
-    if (cY == firstShownLine) {
+  if (cur.y > 0) {
+    if (cur.y == firstShownLine) {
       scrollUp();
     } else {
       cout << "\033[1A" << flush;
     }
-    cY--;
+    cur.y--;
 
     if (curIsAtMaxPos()) {
-      cX = maxPosOfLine(cY);
+      cur.x = maxPosOfLine(cur.y);
       fitTextHorizontal();
       syncCurPosOnScr();
     }
   }
   else {
-    cX = 0;
+    cur.x = 0;
     if (firstShownCol != 0) {
       firstShownCol = 0;
       renderShownText(firstShownLine);
@@ -1009,22 +1008,22 @@ void LimEditor::curDown() {
   if (lines.empty()) {
     return;
   }
-  if (cY < lines.size() - 1) {
-    if (cY == firstShownLine + textAreaLength()) {
+  if (cur.y < lines.size() - 1) {
+    if (cur.y == firstShownLine + textAreaLength()) {
       scrollDown();
     } else {
       cout << "\033[1B" << flush;
     }
-    cY++;
+    cur.y++;
 
     if (curIsAtMaxPos()) {
-      cX = maxPosOfLine(cY);
+      cur.x = maxPosOfLine(cur.y);
       fitTextHorizontal();
       syncCurPosOnScr();
     }
   }
   else {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
     fitTextHorizontal();
     syncCurPosOnScr();
   }
@@ -1034,22 +1033,22 @@ void LimEditor::curLeft() {
   if (lines.empty()) {
     return;
   }
-  if (cX > 0) {
-    cX--;
-    if (cX < firstShownCol && firstShownCol > 0) {
+  if (cur.x > 0) {
+    cur.x--;
+    if (cur.x < firstShownCol && firstShownCol > 0) {
       scrollLeft();
     } else {
       cout << "\033[1D" << flush;
     }
   }
-  else if (cX == 0 && config.curWrap && cY != 0) {
-    if (cY == firstShownLine) {
+  else if (cur.x == 0 && config.curWrap && cur.y != 0) {
+    if (cur.y == firstShownLine) {
       scrollUp();
     } else {
       printf("\033[1A");
     }
-    cY--;
-    cX = maxPosOfLine(cY);
+    cur.y--;
+    cur.x = maxPosOfLine(cur.y);
     fitTextHorizontal();
   }
 }
@@ -1060,21 +1059,21 @@ void LimEditor::curRight() {
   }
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
   if (!curIsAtMaxPos()) {
-    cX++;
-    if (cX - firstShownCol >= textAreaWidth() && lines[cY].length() - 1 > cX) {
+    cur.x++;
+    if (cur.x - firstShownCol >= textAreaWidth() && lines[cur.y].length() - 1 > cur.x) {
       scrollRight();
     } else {
       cout << "\033[1C" << flush;
     }
   }
-  else if (curIsAtMaxPos() && config.curWrap && cY < lines.size() - 1) {
-    if (cY == firstShownLine + winRows - 2 - marginTop) {
+  else if (curIsAtMaxPos() && config.curWrap && cur.y < lines.size() - 1) {
+    if (cur.y == firstShownLine + winRows - 2 - marginTop) {
       scrollDown();
     } else {
       printf("\033[1E");
     }
-    cY++;
-    cX = 0;
+    cur.y++;
+    cur.x = 0;
     if (firstShownCol != 0) {
       firstShownCol = 0;
       renderShownText(firstShownLine);
@@ -1084,45 +1083,45 @@ void LimEditor::curRight() {
 }
 
 void LimEditor::findCharRight(char c) {
-  int pos = lines[cY].find(c, cX + 1);
+  int pos = lines[cur.y].find(c, cur.x + 1);
   if (pos != string::npos) {
-    printf("\033[%dC", pos - cX);
-    cX = pos;
+    printf("\033[%dC", pos - cur.x);
+    cur.x = pos;
   }
 }
 
 void LimEditor::findCharLeft(char c) {
-  if (cX == 0) return;
-  int pos = lines[cY].rfind(c, cX - 1);
+  if (cur.x == 0) return;
+  int pos = lines[cur.y].rfind(c, cur.x - 1);
   if (pos != string::npos) {
-    printf("\033[%dD", cX - pos);
-    cX = pos;
+    printf("\033[%dD", cur.x - pos);
+    cur.x = pos;
   }
 }
 
 void LimEditor::findCharRightBefore(char c) {
-  int pos = lines[cY].find(c, cX + 1);
-  int moveAmount = pos - cX - 1;
+  int pos = lines[cur.y].find(c, cur.x + 1);
+  int moveAmount = pos - cur.x - 1;
   if (pos != string::npos && moveAmount > 0) {
     printf("\033[%dC", moveAmount);
-    cX = pos - 1;
+    cur.x = pos - 1;
   }
 }
 
 void LimEditor::findCharLeftAfter(char c) {
-  if (cX == 0) return;
-  int pos = lines[cY].rfind(c, cX - 1);
-  int moveAmount = cX - pos - 1;
+  if (cur.x == 0) return;
+  int pos = lines[cur.y].rfind(c, cur.x - 1);
+  int moveAmount = cur.x - pos - 1;
   if (pos != string::npos && moveAmount > 0) {
     printf("\033[%dD", moveAmount);
-    cX = pos + 1;
+    cur.x = pos + 1;
   }
 }
 
 void LimEditor::fitTextHorizontal() {
   int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-  if (cX > winCols - marginLeft - padLeft) {
-    firstShownCol = cX - winCols + marginLeft + padLeft + 1;
+  if (cur.x > winCols - marginLeft - padLeft) {
+    firstShownCol = cur.x - winCols + marginLeft + padLeft + 1;
     renderShownText(firstShownLine);
     printf("\033[%dG", winCols - 1);
   } else {
@@ -1130,7 +1129,7 @@ void LimEditor::fitTextHorizontal() {
       firstShownCol = 0;
       renderShownText(firstShownLine);
     }
-    printf("\033[%dG", cX + marginLeft + padLeft);
+    printf("\033[%dG", cur.x + marginLeft + padLeft);
   }
 }
 
@@ -1152,84 +1151,84 @@ int LimEditor::charToInt(const char * c) {
 }
 
 void LimEditor::gotoBegOfNextInner() {
-  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
+  if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
   string sc = ";:(){}[]\"";
-  int x = cX;
-  for (int i = 1; i < lines[cY].length() - cX; i++) {
-    char c = lines[cY][cX + i];
-    if (sc.find(c) != string::npos && sc.find(lines[cY][cX]) == string::npos) {
-      cX += i;
+  int x = cur.x;
+  for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
+    char c = lines[cur.y][cur.x + i];
+    if (sc.find(c) != string::npos && sc.find(lines[cur.y][cur.x]) == string::npos) {
+      cur.x += i;
       break;
     } else if (c == ' ') {
-      cX += i + 1;
+      cur.x += i + 1;
       break;
-    } else if (sc.find(c) == string::npos && sc.find(lines[cY][cX]) != string::npos) {
-      cX += i;
+    } else if (sc.find(c) == string::npos && sc.find(lines[cur.y][cur.x]) != string::npos) {
+      cur.x += i;
       break;
     }
   }
-  if (lines[cY][cX] == ' ') {
+  if (lines[cur.y][cur.x] == ' ') {
     gotoBegOfNextInner();
     return;
-  } if (cX == x && cY < lines.size() - 1) {
-    cY++;
-    cX = minPosOfLineIWS(cY);
-  } else if (cX == x) {
-    cX = maxPosOfLine(cY);
+  } if (cur.x == x && cur.y < lines.size() - 1) {
+    cur.y++;
+    cur.x = minPosOfLineIWS(cur.y);
+  } else if (cur.x == x) {
+    cur.x = maxPosOfLine(cur.y);
   }
   syncCurPosOnScr();
 }
 
 void LimEditor::gotoBegOfNextOuter() {
-  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
-  int x = cX;
-  for (int i = 1; i < lines[cY].length() - cX; i++) {
-    char c = lines[cY][cX + i];
+  if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
+  int x = cur.x;
+  for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
+    char c = lines[cur.y][cur.x + i];
     if (c == ' ') {
-      cX += i + 1;
+      cur.x += i + 1;
       break;
     }
   }
-  if (lines[cY][cX] == ' ') {
+  if (lines[cur.y][cur.x] == ' ') {
     gotoBegOfNextOuter();
     return;
   }
-  if (cX == x && cY < lines.size() - 1) {
-    cY++;
-    cX = minPosOfLineIWS(cY);
+  if (cur.x == x && cur.y < lines.size() - 1) {
+    cur.y++;
+    cur.x = minPosOfLineIWS(cur.y);
   }
-  else if (cX == x) {
-    cX = maxPosOfLine(cY);
+  else if (cur.x == x) {
+    cur.x = maxPosOfLine(cur.y);
   }
   syncCurPosOnScr();
 }
 
 void LimEditor::gotoEndOfNextInner() {
-  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
+  if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
   string sc = ";:(){}[]\"";
-  int x = cX;
-  for (int i = 1; i < lines[cY].length() - cX; i++) {
-    char cn = lines[cY][cX + i + 1];
+  int x = cur.x;
+  for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
+    char cn = lines[cur.y][cur.x + i + 1];
     if (cn == ' ') {
-      cX += i;
+      cur.x += i;
       break;
     }
-    else if (sc.find(cn) != string::npos && sc.find(lines[cY][cX]) == string::npos || cX + i == lines[cY].size() - 1) {
-      cX += i;
+    else if (sc.find(cn) != string::npos && sc.find(lines[cur.y][cur.x]) == string::npos || cur.x + i == lines[cur.y].size() - 1) {
+      cur.x += i;
       break;
     }
-    else if (sc.find(cn) == string::npos && sc.find(lines[cY][cX]) != string::npos || cX + i == lines[cY].size() - 1) {
-      cX += i;
+    else if (sc.find(cn) == string::npos && sc.find(lines[cur.y][cur.x]) != string::npos || cur.x + i == lines[cur.y].size() - 1) {
+      cur.x += i;
       break;
     }
   }
-  if (lines[cY][cX] == ' ') {
+  if (lines[cur.y][cur.x] == ' ') {
     gotoEndOfNextInner();
     return;
   }
-  if (cX == x) {
-    cY++;
-    cX = minPosOfLineIWS(cY);
+  if (cur.x == x) {
+    cur.y++;
+    cur.x = minPosOfLineIWS(cur.y);
     gotoEndOfNextInner();
     return;
   }
@@ -1237,26 +1236,26 @@ void LimEditor::gotoEndOfNextInner() {
 }
 
 void LimEditor::gotoEndOfNextOuter() {
-  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
-  int x = cX;
-  for (int i = 1; i < lines[cY].length() - cX; i++) {
-    if (cX + i + 1 == lines[cY].size()) {
-      cX += i;
+  if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
+  int x = cur.x;
+  for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
+    if (cur.x + i + 1 == lines[cur.y].size()) {
+      cur.x += i;
       break;
     }
-    char cn = lines[cY][cX + i + 1];
+    char cn = lines[cur.y][cur.x + i + 1];
     if (cn == ' ') {
-      cX += i;
+      cur.x += i;
       break;
     }
   }
-  if (lines[cY][cX] == ' ') {
+  if (lines[cur.y][cur.x] == ' ') {
     gotoEndOfNextOuter();
     return;
   }
-  if (cX == x) {
-    cY++;
-    cX = minPosOfLineIWS(cY);
+  if (cur.x == x) {
+    cur.y++;
+    cur.x = minPosOfLineIWS(cur.y);
     gotoEndOfNextOuter();
     return;
   }
@@ -1264,67 +1263,67 @@ void LimEditor::gotoEndOfNextOuter() {
 }
 
 void LimEditor::gotoBegOfLastInner() {
-  if (cY == 0 && cX == 0) return;
-  if (cX == 0) {
-    cY--;
-    cX = maxPosOfLine(cY);
+  if (cur.y == 0 && cur.x == 0) return;
+  if (cur.x == 0) {
+    cur.y--;
+    cur.x = maxPosOfLine(cur.y);
     gotoBegOfLastInner();
     return;
   }
   string sc = ";:(){}[]\"";
   char cl;
-  int x = cX;
-  for (int i = 1; i <= cX; i++) {
-    cl = lines[cY][cX - i];
+  int x = cur.x;
+  for (int i = 1; i <= cur.x; i++) {
+    cl = lines[cur.y][cur.x - i];
     if ((cl == ' ' || sc.find(cl) != string::npos) && i > 1) {
-      cX -= (i - 1);
+      cur.x -= (i - 1);
       break;
     }
   }
-  if (((cX <= minPosOfLineIWS(cY) && (lines[cY][cX] == ' ' || lines[cY].empty()))) && cY != 0) {
-    cY--;
-    cX = maxPosOfLine(cY);
+  if (((cur.x <= minPosOfLineIWS(cur.y) && (lines[cur.y][cur.x] == ' ' || lines[cur.y].empty()))) && cur.y != 0) {
+    cur.y--;
+    cur.x = maxPosOfLine(cur.y);
     gotoBegOfLastInner();
     return;
   }
-  else if (cX == x) {
-    cX = minPosOfLineIWS(cY);
+  else if (cur.x == x) {
+    cur.x = minPosOfLineIWS(cur.y);
   }
   syncCurPosOnScr();
 }
 
 void LimEditor::gotoBegOfLastOuter() {
-  if (cY == 0 && cX == 0) return;
-  if (cX == 0) {
-    cY--;
-    cX = maxPosOfLine(cY);
+  if (cur.y == 0 && cur.x == 0) return;
+  if (cur.x == 0) {
+    cur.y--;
+    cur.x = maxPosOfLine(cur.y);
     gotoBegOfLastOuter();
     return;
   }
-  int x = cX;
-  for (int i = 1; i <= cX; i++) {
-    char cl = lines[cY][cX - i];
+  int x = cur.x;
+  for (int i = 1; i <= cur.x; i++) {
+    char cl = lines[cur.y][cur.x - i];
     if (cl == ' ' && i > 1) {
-      cX -= (i - 1);
+      cur.x -= (i - 1);
       break;
     }
   }
-  if (((cX <= minPosOfLineIWS(cY) && (lines[cY][cX] == ' ' || lines[cY].empty()))) && cY != 0) {
-    cY--;
-    cX = maxPosOfLine(cY);
+  if (((cur.x <= minPosOfLineIWS(cur.y) && (lines[cur.y][cur.x] == ' ' || lines[cur.y].empty()))) && cur.y != 0) {
+    cur.y--;
+    cur.x = maxPosOfLine(cur.y);
     gotoBegOfLastOuter();
     return;
   }
-  else if (cX == x) {
-    cX = minPosOfLineIWS(cY);
+  else if (cur.x == x) {
+    cur.x = minPosOfLineIWS(cur.y);
   }
   syncCurPosOnScr();
 }
 
 void LimEditor::goToFileBegin() {
-  cY = 0;
+  cur.y = 0;
   if (curIsAtMaxPos()) {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
   }
   firstShownLine = 0;
   renderShownText(firstShownLine);
@@ -1332,11 +1331,11 @@ void LimEditor::goToFileBegin() {
 }
 
 void LimEditor::goToFileEnd() {
-  cY = lines.size() - 1;
+  cur.y = lines.size() - 1;
   if (curIsAtMaxPos()) {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
   }
-  firstShownLine = (cY < textAreaLength()) ? 0 : cY - textAreaLength();
+  firstShownLine = (cur.y < textAreaLength()) ? 0 : cur.y - textAreaLength();
   renderShownText(firstShownLine);
   syncCurPosOnScr();
 }
@@ -1348,9 +1347,9 @@ void LimEditor::goToLine(int line) {
   else if (line >= lines.size()) {
     line = lines.size() - 1;
   }
-  cY = line;
+  cur.y = line;
   if (curIsAtMaxPos()) {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
   }
   
   if (line < firstShownLine || line > firstShownLine + textAreaLength()) {
@@ -1394,19 +1393,19 @@ void LimEditor::search() {
 
 string LimEditor::getStrOnCur() {
   string sChars = " :;,.{}[]()";
-  char charOnCur = lines[cY][cX];
+  char charOnCur = lines[cur.y][cur.x];
   if (sChars.find(charOnCur) != string::npos) {
     return string(1, charOnCur);
   }
-  int xS = cX;
+  int xS = cur.x;
   int len = 1;
-  while (xS > 0 && sChars.find(lines[cY][xS - 1]) == string::npos) {
+  while (xS > 0 && sChars.find(lines[cur.y][xS - 1]) == string::npos) {
       xS--;
   }
-  while (abs(len+xS) <= lines[cY].length() && sChars.find(lines[cY][xS + len]) == string::npos) {
+  while (abs(len+xS) <= lines[cur.y].length() && sChars.find(lines[cur.y][xS + len]) == string::npos) {
       len++;
   }
-  return lines[cY].substr(xS, len);
+  return lines[cur.y].substr(xS, len);
 }
 
 void LimEditor::searchStrOnCur() {
@@ -1456,8 +1455,8 @@ int LimEditor::getMatchClosestToCur() {
   int closest = -1;
   int d;
   for (int i = 0; i < matches.size(); i++) {
-    d = abs(matches[i].y - cY);
-    if (closest < 0 || d < abs(matches[closest].y - cY)) {
+    d = abs(matches[i].y - cur.y);
+    if (closest < 0 || d < abs(matches[closest].y - cur.y)) {
       closest = i;
     }
   }
@@ -1489,10 +1488,10 @@ void LimEditor::gotoLastMatch() {
 
 void LimEditor::gotoMatch() {
   pos pos = matches[curMatch];
-  cX = pos.x;
-  cY = pos.y;
-  if (cY < firstShownLine || cY > firstShownLine + textAreaLength()) {
-    goToLine(cY);
+  cur.x = pos.x;
+  cur.y = pos.y;
+  if (cur.y < firstShownLine || cur.y > firstShownLine + textAreaLength()) {
+    goToLine(cur.y);
   }
   highlightMatches();
   syncCurPosOnScr();
@@ -1700,8 +1699,8 @@ string LimEditor::getPerrorString(const string& errorMsg) {
 }
 
 void LimEditor::clsResetCur() {
-  cX = 0;
-  cY = 0;
+  cur.x = 0;
+  cur.y = 0;
   printf("\033[2J\033[%d;%dH", marginTop, marginLeft);
   fflush(stdout);
 }
@@ -1724,31 +1723,31 @@ void LimEditor::syncCurPosOnScr() {
       renderShownText(firstShownLine);
     }
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-    printf("\033[%d;%dH", cY - firstShownLine + marginTop, cX - firstShownCol + marginLeft + padLeft);
+    printf("\033[%d;%dH", cur.y - firstShownLine + marginTop, cur.x - firstShownCol + marginLeft + padLeft);
     fflush(stdout);
   }
 }
 
 bool LimEditor::curIsAtMaxPos() {
-  if (lines[cY].empty()) return true;
-  if (currentState == State::NORMAL && cX >= lines[cY].length() - 1) {
+  if (lines[cur.y].empty()) return true;
+  if (currentState == State::NORMAL && cur.x >= lines[cur.y].length() - 1) {
     return true;
   }
-  else if (cX >= lines[cY].length()) {
+  else if (cur.x >= lines[cur.y].length()) {
     return true;
   }
   return false;
 }
 
 bool LimEditor::curIsOutOfScreenHor() {
-  return cX > firstShownCol + textAreaWidth() || cX < firstShownCol;
+  return cur.x > firstShownCol + textAreaWidth() || cur.x < firstShownCol;
 }
 
 void LimEditor::setCurToScreenHor() {
-  if (cX < firstShownCol) {
-    firstShownCol = cX;
+  if (cur.x < firstShownCol) {
+    firstShownCol = cur.x;
   } else {
-    firstShownCol = cX - textAreaWidth();
+    firstShownCol = cur.x - textAreaWidth();
   }
 }
 
@@ -1797,13 +1796,13 @@ string LimEditor::showLineNum(int lNum) {
     string strLNum = to_string(lNum);
     if (config.relativenumber) {
       if (lNum == 0) {
-        checkLineNumSpace(to_string(cY+1));
-        return "\033[" + to_string(padLeft) + "G\033[97m" + alignR(to_string(cY+1), lineNumPad) + "\033[0m"; // White highlight
+        checkLineNumSpace(to_string(cur.y+1));
+        return "\033[" + to_string(padLeft) + "G\033[97m" + alignR(to_string(cur.y+1), lineNumPad) + "\033[0m"; // White highlight
       }
       return "\033[" + to_string(padLeft) + "G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
     }
     checkLineNumSpace(strLNum);
-    if (lNum == cY + 1) {
+    if (lNum == cur.y + 1) {
       return "\033[" + to_string(padLeft) + "G\033[97m" + alignR(strLNum, lineNumPad) + "\033[0m"; // White highlight
     }
     return "\033[" + to_string(padLeft) + "G\033[90m" + alignR(strLNum, lineNumPad) + "\033[0m";
@@ -1817,7 +1816,7 @@ void LimEditor::updateLineNums(int startLine) {
     printf("\033[%d;0H", marginTop + startLine - firstShownLine);
     if (config.relativenumber) {
       for(int i = startLine; i < lines.size() && i <= winRows-marginTop-2+startLine; i++) {
-        cout << showLineNum(abs(cY-i)) << "\033[1E";
+        cout << showLineNum(abs(cur.y-i)) << "\033[1E";
       }
     }
     else {
@@ -2029,7 +2028,7 @@ void LimEditor::updateStatBar(bool showCommandLine) {
   if (unsaved) saveStatus = "\033[41;30m" + saveText + "\033[47;30m";
   else saveStatus = "\033[42;30m" + saveText + "\033[47;30m";
   string eInfo = "| " + fileName + " " + saveStatus;
-  string curInfo = to_string(cY + 1) + ", " + to_string(cX + 1) + " ";
+  string curInfo = to_string(cur.y + 1) + ", " + to_string(cur.x + 1) + " ";
  
   int fillerSpace = winCols - modeText.length() - eInfo.length() - curInfo.length() + (saveStatus.length() - saveText.length());
 
@@ -2056,12 +2055,12 @@ void LimEditor::updateCommandBar() {
 
 void LimEditor::updateSelectedText() {
   if (currentState == State::VISUAL) {
-    selectedText.eX = cX;
-    selectedText.eY = cY;
+    selectedText.eX = cur.x;
+    selectedText.eY = cur.y;
   }
   else if (currentState == State::VLINE) {
-    selectedText.eX = lines[cY].length();
-    selectedText.eY = cY;
+    selectedText.eX = lines[cur.y].length();
+    selectedText.eY = cur.y;
   }
 }
 
@@ -2115,8 +2114,8 @@ void LimEditor::updateShowSelection() {
 }
 
 void LimEditor::clearSelectionUpdate() {
-  cY = selectedText.bY;
-  cX = selectedText.bX;
+  cur.y = selectedText.bY;
+  cur.x = selectedText.bX;
   checkSelectionPoints(&selectedText);
   syncCurPosOnScr();
   updateRenderedLines(selectedText.bY);
@@ -2181,9 +2180,9 @@ void LimEditor::deleteSelection() {
     lines.erase(lines.begin() + endLine - delLines);
   }
 
-  if (lines[cY].empty()) cX = 0;
+  if (lines[cur.y].empty()) cur.x = 0;
   else {
-    cX = min(selectedText.bX, static_cast<int>(lines[startLine].length()));
+    cur.x = min(selectedText.bX, static_cast<int>(lines[startLine].length()));
   }
   clearSelectionUpdate();
 }
@@ -2207,13 +2206,13 @@ void LimEditor::checkSelectionPoints(textArea* selection) {
 
 void LimEditor::cpLine() {
   Clip clip;
-  clip.push_back(LineYank(lines[cY], true));
+  clip.push_back(LineYank(lines[cur.y], true));
   clipboard.copyClip(clip);
 }
 
 void LimEditor::cpLineEnd() {
   Clip clip;
-  clip.push_back(LineYank(lines[cY].substr(cX), false));
+  clip.push_back(LineYank(lines[cur.y].substr(cur.x), false));
   clip.push_back(LineYank("", false));
   clipboard.copyClip(clip);
 }
@@ -2221,10 +2220,10 @@ void LimEditor::cpLineEnd() {
 void LimEditor::delCpLine() {
   unsaved = true;
   cpLine();
-  lines.erase(lines.begin() + cY);
-  updateRenderedLines(cY);
+  lines.erase(lines.begin() + cur.y);
+  updateRenderedLines(cur.y);
   if (curIsAtMaxPos()) {
-    cX = maxPosOfLine(cY);
+    cur.x = maxPosOfLine(cur.y);
     syncCurPosOnScr();
   }
 }
@@ -2232,10 +2231,10 @@ void LimEditor::delCpLine() {
 void LimEditor::delCpLineEnd() {
   unsaved = true;
   cpLineEnd();
-  lines[cY].erase(cX);
-  updateRenderedLines(cY, 1);
-  if (cX > 0) {
-    cX--;
+  lines[cur.y].erase(cur.x);
+  updateRenderedLines(cur.y, 1);
+  if (cur.x > 0) {
+    cur.x--;
     syncCurPosOnScr();
   }
 }
@@ -2244,36 +2243,36 @@ void LimEditor::pasteClipboard(int i) {
   if (clipboard.empty()) return;
   if (i >= clipboard.size()) return;
   unsaved = true;
-  int begY = cY;
+  int begY = cur.y;
 
   string remain = "";
   Clip* clip = (i < 0) ? &clipboard[clipboard.size()-1] : &clipboard[i];
   int l = 0;
   for (LineYank line: *clip) {
     if (line.isFullLine() || l > 0) {
-      lines.insert(lines.begin() + cY + 1, line.text());
-      cY++;
-      cX = minPosOfLineIWS(cY);
+      lines.insert(lines.begin() + cur.y + 1, line.text());
+      cur.y++;
+      cur.x = minPosOfLineIWS(cur.y);
     }
-    else if (lines[cY].empty()) {
-      lines[cY] = line.text();
-      cX = (line.text() == "") ? 0 : maxPosOfLine(cY);
+    else if (lines[cur.y].empty()) {
+      lines[cur.y] = line.text();
+      cur.x = (line.text() == "") ? 0 : maxPosOfLine(cur.y);
     }
     else {
-      remain = lines[cY].substr(cX + 1);
-      lines[cY].erase(cX + 1);
-      lines[cY].append(line.text());
-      cX = maxPosOfLine(cY);
+      remain = lines[cur.y].substr(cur.x + 1);
+      lines[cur.y].erase(cur.x + 1);
+      lines[cur.y].append(line.text());
+      cur.x = maxPosOfLine(cur.y);
     }
     l++;
   }
-  lines[cY].append(remain);
+  lines[cur.y].append(remain);
 
-  if (cY - firstShownLine > textAreaLength()) {
-    firstShownLine = cY - winRows + marginTop + 2;
+  if (cur.y - firstShownLine > textAreaLength()) {
+    firstShownLine = cur.y - winRows + marginTop + 2;
     renderShownText(firstShownLine);
   }
-  else if (cY == begY) {
+  else if (cur.y == begY) {
     updateRenderedLines(begY, 1);
   } else {
     updateRenderedLines(begY);
