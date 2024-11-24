@@ -117,16 +117,22 @@ void LimEditor::modeNormal() {
         pasteClipboard();
         break;
       case 'W': // Beginning of next word
+        gotoBegOfNextOuter();
+        break;
       case 'w':
-        gotoBegOfNext();
+        gotoBegOfNextInner();
         break;
       case 'E': // End of current word or next if at end of word
+        gotoEndOfNextOuter();
+        break;
       case 'e':
-        gotoEndOfNext();
+        gotoEndOfNextInner();
         break;
       case 'B': // Beginning of last word
+        gotoBegOfLastOuter();
+        break;
       case 'b':
-        gotoBegOfLast();
+        gotoBegOfLastInner();
         break;
       case 'g':
         if (curInFileTree) break;
@@ -381,17 +387,17 @@ void LimEditor::modeVisual() {
 
       case 'W': // Beginning of next word
       case 'w':
-        gotoBegOfNext();
+        gotoBegOfNextInner();
         updateSelectedText();
         break;
       case 'E': // End of current word or next if at end of word
       case 'e':
-        gotoEndOfNext();
+        gotoEndOfNextInner();
         updateSelectedText();
         break;
       case 'B': // Beginning of last word
       case 'b':
-        gotoBegOfLast();
+        gotoBegOfLastInner();
         updateSelectedText();
         break;
       case 'g':
@@ -953,7 +959,7 @@ void LimEditor::curMove(int c) {
     curRight();
   } 
   else if (c == 'H') {
-    gotoBegOfLast();
+    gotoBegOfLastInner();
   } else if (c == 'J') {
     if (firstShownLine + textAreaLength() < lines.size() - 1) {
       cY++;
@@ -965,7 +971,7 @@ void LimEditor::curMove(int c) {
       scrollUp();
     }
   } else if (c == 'L') {
-    gotoBegOfNext();
+    gotoBegOfNextInner();
   }
   updateStatBar();
   updateLineNums(firstShownLine);
@@ -1145,9 +1151,8 @@ int LimEditor::charToInt(const char * c) {
   return (*c == '-') ? -charTOunsigned(c+ 1) : charTOunsigned(c);
 }
 
-void LimEditor::gotoBegOfNext() {
+void LimEditor::gotoBegOfNextInner() {
   if (curIsAtMaxPos() && cY == lines.size() - 1) return;
-
   string sc = ";:(){}[]\"";
   int x = cX;
   for (int i = 1; i < lines[cY].length() - cX; i++) {
@@ -1155,18 +1160,38 @@ void LimEditor::gotoBegOfNext() {
     if (sc.find(c) != string::npos && sc.find(lines[cY][cX]) == string::npos) {
       cX += i;
       break;
-    }
-    else if (c == ' ') {
+    } else if (c == ' ') {
       cX += i + 1;
       break;
-    }
-    else if (sc.find(c) == string::npos && sc.find(lines[cY][cX]) != string::npos) {
+    } else if (sc.find(c) == string::npos && sc.find(lines[cY][cX]) != string::npos) {
       cX += i;
       break;
     }
   }
   if (lines[cY][cX] == ' ') {
-    gotoBegOfNext();
+    gotoBegOfNextInner();
+    return;
+  } if (cX == x && cY < lines.size() - 1) {
+    cY++;
+    cX = minPosOfLineIWS(cY);
+  } else if (cX == x) {
+    cX = maxPosOfLine(cY);
+  }
+  syncCurPosOnScr();
+}
+
+void LimEditor::gotoBegOfNextOuter() {
+  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
+  int x = cX;
+  for (int i = 1; i < lines[cY].length() - cX; i++) {
+    char c = lines[cY][cX + i];
+    if (c == ' ') {
+      cX += i + 1;
+      break;
+    }
+  }
+  if (lines[cY][cX] == ' ') {
+    gotoBegOfNextOuter();
     return;
   }
   if (cX == x && cY < lines.size() - 1) {
@@ -1179,15 +1204,11 @@ void LimEditor::gotoBegOfNext() {
   syncCurPosOnScr();
 }
 
-void LimEditor::gotoEndOfNext() {
+void LimEditor::gotoEndOfNextInner() {
   if (curIsAtMaxPos() && cY == lines.size() - 1) return;
-
   string sc = ";:(){}[]\"";
   int x = cX;
   for (int i = 1; i < lines[cY].length() - cX; i++) {
-    if (cX + i >= lines[cY].size()) {
-      return;
-    }
     char cn = lines[cY][cX + i + 1];
     if (cn == ' ') {
       cX += i;
@@ -1203,39 +1224,100 @@ void LimEditor::gotoEndOfNext() {
     }
   }
   if (lines[cY][cX] == ' ') {
-    gotoEndOfNext();
+    gotoEndOfNextInner();
     return;
   }
   if (cX == x) {
     cY++;
     cX = minPosOfLineIWS(cY);
-    gotoEndOfNext();
+    gotoEndOfNextInner();
     return;
   }
   syncCurPosOnScr();
 }
 
-void LimEditor::gotoBegOfLast() {
-  if (cY == 0 && cX == 0) return;
-
-  string sc = ";:(){}[]\"";
+void LimEditor::gotoEndOfNextOuter() {
+  if (curIsAtMaxPos() && cY == lines.size() - 1) return;
   int x = cX;
-  for (int i = 1; i <= cX; i++) {
-    char cl = lines[cY][cX - i];
-    if ((cl == ' ' || sc.find(cl) != string::npos) && i > 1) {
-      cX -= i - 1;
+  for (int i = 1; i < lines[cY].length() - cX; i++) {
+    if (cX + i + 1 == lines[cY].size()) {
+      cX += i;
+      break;
+    }
+    char cn = lines[cY][cX + i + 1];
+    if (cn == ' ') {
+      cX += i;
       break;
     }
   }
-  if ((cX <= minPosOfLineIWS(cY) || cX == x) && cY != 0) {
+  if (lines[cY][cX] == ' ') {
+    gotoEndOfNextOuter();
+    return;
+  }
+  if (cX == x) {
+    cY++;
+    cX = minPosOfLineIWS(cY);
+    gotoEndOfNextOuter();
+    return;
+  }
+  syncCurPosOnScr();
+}
+
+void LimEditor::gotoBegOfLastInner() {
+  if (cY == 0 && cX == 0) return;
+  if (cX == 0) {
     cY--;
     cX = maxPosOfLine(cY);
-    gotoBegOfLast();
+    gotoBegOfLastInner();
+    return;
   }
-  else if (cX == x && cY == 0) {
+  string sc = ";:(){}[]\"";
+  char cl;
+  int x = cX;
+  for (int i = 1; i <= cX; i++) {
+    cl = lines[cY][cX - i];
+    if ((cl == ' ' || sc.find(cl) != string::npos) && i > 1) {
+      cX -= (i - 1);
+      break;
+    }
+  }
+  if (((cX <= minPosOfLineIWS(cY) && (lines[cY][cX] == ' ' || lines[cY].empty()))) && cY != 0) {
+    cY--;
+    cX = maxPosOfLine(cY);
+    gotoBegOfLastInner();
+    return;
+  }
+  else if (cX == x) {
     cX = minPosOfLineIWS(cY);
   }
+  syncCurPosOnScr();
+}
 
+void LimEditor::gotoBegOfLastOuter() {
+  if (cY == 0 && cX == 0) return;
+  if (cX == 0) {
+    cY--;
+    cX = maxPosOfLine(cY);
+    gotoBegOfLastOuter();
+    return;
+  }
+  int x = cX;
+  for (int i = 1; i <= cX; i++) {
+    char cl = lines[cY][cX - i];
+    if (cl == ' ' && i > 1) {
+      cX -= (i - 1);
+      break;
+    }
+  }
+  if (((cX <= minPosOfLineIWS(cY) && (lines[cY][cX] == ' ' || lines[cY].empty()))) && cY != 0) {
+    cY--;
+    cX = maxPosOfLine(cY);
+    gotoBegOfLastOuter();
+    return;
+  }
+  else if (cX == x) {
+    cX = minPosOfLineIWS(cY);
+  }
   syncCurPosOnScr();
 }
 
@@ -1758,11 +1840,11 @@ void LimEditor::fillEmptyLines() {
 }
 
 void LimEditor::fgColor(uint32_t color) {
-  printf("\033[38;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
+  printf("\033[38;2;%d;%d;%dm", (int)config.r(color), (int)config.g(color), (int)config.b(color));
 }
 
 void LimEditor::bgColor(uint32_t color) {
-  printf("\033[48;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
+  printf("\033[48;2;%d;%d;%dm", (int)config.r(color), (int)config.g(color), (int)config.b(color));
 }
 
 void LimEditor::printLine(int i) {

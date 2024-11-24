@@ -163,9 +163,12 @@ class LimEditor : public ModeState {
     bool is_integer(const string &s);
     unsigned charTOunsigned(const char * c);
     int charToInt(const char * c);
-    void gotoBegOfNext();
-    void gotoEndOfNext();
-    void gotoBegOfLast();
+    void gotoBegOfNextInner();
+    void gotoEndOfNextInner();
+    void gotoBegOfLastInner();
+    void gotoBegOfNextOuter();
+    void gotoEndOfNextOuter();
+    void gotoBegOfLastOuter();
     void goToFileBegin();
     void goToFileEnd();
     void goToLine(int line);
