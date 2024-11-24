@@ -13,11 +13,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up C++ environment
-        uses: actions/setup-cpp@v1  # Optional, for setting up compiler
-        with:
-          compiler: g++
-
       - name: Build with make
         run: |
           make clean
