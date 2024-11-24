@@ -1,5 +1,6 @@
 # Lim
 
+![Build](https://github.com/lepton9/lim/actions/workflows/build.yml/badge.svg)
 ![Commit](https://img.shields.io/github/last-commit/lepton9/lim)
 ![GitHub top language](https://img.shields.io/github/languages/top/lepton9/lim)
 ![Lines](https://tokei.rs/b1/github/lepton9/lim)
