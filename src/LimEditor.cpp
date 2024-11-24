@@ -172,6 +172,14 @@ void LimEditor::modeNormal() {
         c = readKey();
         findCharLeft(c);
         break;
+      case 't':
+        c = readKey();
+        findCharRightBefore(c);
+        break;
+      case 'T':
+        c = readKey();
+        findCharLeftAfter(c);
+        break;
       case 14: // C-n
         ftree.toggleShow();
         curInFileTree = true;
@@ -1083,6 +1091,25 @@ void LimEditor::findCharLeft(char c) {
   if (pos != string::npos) {
     printf("\033[%dD", cX - pos);
     cX = pos;
+  }
+}
+
+void LimEditor::findCharRightBefore(char c) {
+  int pos = lines[cY].find(c, cX + 1);
+  int moveAmount = pos - cX - 1;
+  if (pos != string::npos && moveAmount > 0) {
+    printf("\033[%dC", moveAmount);
+    cX = pos - 1;
+  }
+}
+
+void LimEditor::findCharLeftAfter(char c) {
+  if (cX == 0) return;
+  int pos = lines[cY].rfind(c, cX - 1);
+  int moveAmount = cX - pos - 1;
+  if (pos != string::npos && moveAmount > 0) {
+    printf("\033[%dD", moveAmount);
+    cX = pos + 1;
   }
 }
 

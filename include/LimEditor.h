@@ -157,6 +157,8 @@ class LimEditor : public ModeState {
     void curRight();
     void findCharRight(char c);
     void findCharLeft(char c);
+    void findCharRightBefore(char c);
+    void findCharLeftAfter(char c);
     void fitTextHorizontal();
     bool is_integer(const string &s);
     unsigned charTOunsigned(const char * c);
