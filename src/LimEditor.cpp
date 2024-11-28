@@ -1925,11 +1925,10 @@ void LimEditor::clearLine() {
   }
 }
 
-// TODO: on count < 0, set to lines shown below cur.y and not lines.size()
 void LimEditor::updateRenderedLines(int startLine, int count) {
   cout << "\033[s";
   printf("\033[%d;0H", marginTop + startLine - firstShownLine);
-  if (count < 0) count = lines.size();
+  if (count < 0) count = textAreaLength() - (cur.y - firstShownLine) + 1;
 
   int maxIter = min(textAreaLength() - (startLine - firstShownLine)
       , textAreaLength() + 1);
@@ -1942,7 +1941,6 @@ void LimEditor::updateRenderedLines(int startLine, int count) {
     printLine(i);
   }
   if (count == lines.size()) fillEmptyLines();
-  
   cout << "\033[u" << flush;
   if (config.relativenumber) updateLineNums(firstShownLine);
 }
