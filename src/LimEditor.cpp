@@ -1164,17 +1164,16 @@ int LimEditor::charToInt(const char * c) {
 
 void LimEditor::gotoBegOfNextInner() {
   if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
-  string sc = ";:(){}[]'\"";
   int x = cur.x;
   for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
     char c = lines[cur.y][cur.x + i];
-    if (sc.find(c) != string::npos && sc.find(lines[cur.y][cur.x]) == string::npos) {
+    if (s_chars.find(c) != string::npos && s_chars.find(lines[cur.y][cur.x]) == string::npos) {
       cur.x += i;
       break;
     } else if (c == ' ') {
       cur.x += i + 1;
       break;
-    } else if (sc.find(c) == string::npos && sc.find(lines[cur.y][cur.x]) != string::npos) {
+    } else if (s_chars.find(c) == string::npos && s_chars.find(lines[cur.y][cur.x]) != string::npos) {
       cur.x += i;
       break;
     }
@@ -1217,7 +1216,6 @@ void LimEditor::gotoBegOfNextOuter() {
 
 void LimEditor::gotoEndOfNextInner() {
   if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
-  string sc = ";:(){}[]'\"";
   int x = cur.x;
   for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
     char cn = lines[cur.y][cur.x + i + 1];
@@ -1225,11 +1223,11 @@ void LimEditor::gotoEndOfNextInner() {
       cur.x += i;
       break;
     }
-    else if (sc.find(cn) != string::npos && sc.find(lines[cur.y][cur.x]) == string::npos || cur.x + i == lines[cur.y].size() - 1) {
+    else if (s_chars.find(cn) != string::npos && s_chars.find(lines[cur.y][cur.x]) == string::npos || cur.x + i == lines[cur.y].size() - 1) {
       cur.x += i;
       break;
     }
-    else if (sc.find(cn) == string::npos && sc.find(lines[cur.y][cur.x]) != string::npos || cur.x + i == lines[cur.y].size() - 1) {
+    else if (s_chars.find(cn) == string::npos && s_chars.find(lines[cur.y][cur.x]) != string::npos || cur.x + i == lines[cur.y].size() - 1) {
       cur.x += i;
       break;
     }
@@ -1282,12 +1280,11 @@ void LimEditor::gotoBegOfLastInner() {
     gotoBegOfLastInner();
     return;
   }
-  string sc = ";:(){}[]'\"";
   char cl;
   int x = cur.x;
   for (int i = 1; i <= cur.x; i++) {
     cl = lines[cur.y][cur.x - i];
-    if ((cl == ' ' || sc.find(cl) != string::npos) && i > 1) {
+    if ((cl == ' ' || s_chars.find(cl) != string::npos) && i > 1) {
       cur.x -= (i - 1);
       break;
     }
@@ -1422,11 +1419,9 @@ vector<string> LimEditor::textAreaToString(textArea* area) {
 }
 
 textArea LimEditor::getStrAreaOnCur() {
-  // TODO: set const special characters to use everywhere
-  string sc = " ;:(){}[]<>'\"";
   textArea word;
   string line = lines[cur.y];
-  if (sc.find(line[cur.x]) != string::npos) {
+  if (s_chars.find(line[cur.x]) != string::npos) {
     word.bX = cur.x;
     word.eX = cur.x;
     word.bY = cur.y;
@@ -1436,13 +1431,13 @@ textArea LimEditor::getStrAreaOnCur() {
   int iL = cur.x;
   int iR = cur.x;
   while (word.bX < 0 || word.eX < 0) {
-    if (word.bX < 0 && (iL == 0 || sc.find(line[iL - 1]) != string::npos)) {
+    if (word.bX < 0 && (iL == 0 || s_chars.find(line[iL - 1]) != string::npos)) {
       word.bX = iL;
       word.bY = cur.y;
     } else {
       iL--;
     }
-    if (word.eX < 0 && (iR == line.length() - 1 || sc.find(line[iR + 1]) != string::npos)) {
+    if (word.eX < 0 && (iR == line.length() - 1 || s_chars.find(line[iR + 1]) != string::npos)) {
       word.eX = iR;
       word.eY = cur.y;
     } else {

@@ -75,6 +75,8 @@ class LimEditor : public ModeState {
         func(string n, string i, functionP fp) : name(n), info(i), f(fp) {};
     };
 
+    const string s_chars = "~!@#$%^&*=(){}[]|:`'\";+-<>?,.\\/";
+
     int marginLeft = 7;
     int marginTop = 1;
     int lineNumPad = 3;
