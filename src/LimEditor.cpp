@@ -168,7 +168,6 @@ void LimEditor::modeNormal() {
             selectedText = getStrAreaOnCur();
             copySelection();
             deleteSelection();
-            updateRenderedLines(cur.y, 1);
             syncCurPosOnScr();
           }
         }
@@ -181,13 +180,21 @@ void LimEditor::modeNormal() {
         if (curInFileTree) break;
         delCpLineEnd();
         break;
-      case 'y':
+      case 'y': {
         if (curInFileTree) break;
         c = readKey();
-        if (c == 'y') {
+        if (c == 'i') {
+          if (readKey() == 'w') {
+            selectedText = getStrAreaOnCur();
+            copySelection();
+            clearSelectionUpdate();
+          }
+        }
+        else if (c == 'y') {
           cpLine();
         }
         break;
+      }
       case 'Y':
         if (curInFileTree) break;
         cpLineEnd();
