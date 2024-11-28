@@ -1,4 +1,5 @@
 #include "../include/LimEditor.h"
+#include <vector>
 
 using namespace std;
 
@@ -106,6 +107,17 @@ void LimEditor::modeNormal() {
       case 'c':
         if (curInFileTree) {
           copyFileOnCur();
+        } else {
+          if (readKey() == 'i') {
+            if (readKey() == 'w') {
+              textArea area = getStrAreaOnCur();
+              deleteTextArea(&area);
+              unsaved = true;
+              updateRenderedLines(cur.y, 1);
+              syncCurPosOnScr();
+              handleEvent(Event::INPUT);
+            }
+          }
         }
         break;
       case 'p':
@@ -442,6 +454,7 @@ void LimEditor::start(string fName) {
     readFile(fName, true);
   }
 }
+
 bool LimEditor::readConfig() {
   config.parse();
 
@@ -882,7 +895,6 @@ void LimEditor::removeFileOnCur() {
 
 void LimEditor::renameFileOnCur() {
   if (!curInFileTree) return;
-  
   string newName = queryUser("Rename " + ftree.getElementOnCur()->name + " to ");
   if (newName == "") return;
   string oldPath = ftree.getElementOnCur()->path.string();
@@ -1152,7 +1164,7 @@ int LimEditor::charToInt(const char * c) {
 
 void LimEditor::gotoBegOfNextInner() {
   if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
-  string sc = ";:(){}[]\"";
+  string sc = ";:(){}[]'\"";
   int x = cur.x;
   for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
     char c = lines[cur.y][cur.x + i];
@@ -1205,7 +1217,7 @@ void LimEditor::gotoBegOfNextOuter() {
 
 void LimEditor::gotoEndOfNextInner() {
   if (curIsAtMaxPos() && cur.y == lines.size() - 1) return;
-  string sc = ";:(){}[]\"";
+  string sc = ";:(){}[]'\"";
   int x = cur.x;
   for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
     char cn = lines[cur.y][cur.x + i + 1];
@@ -1270,7 +1282,7 @@ void LimEditor::gotoBegOfLastInner() {
     gotoBegOfLastInner();
     return;
   }
-  string sc = ";:(){}[]\"";
+  string sc = ";:(){}[]'\"";
   char cl;
   int x = cur.x;
   for (int i = 1; i <= cur.x; i++) {
@@ -1391,21 +1403,62 @@ void LimEditor::search() {
   }
 }
 
+vector<string> LimEditor::textAreaToString(textArea* area) {
+  vector<string> text;
+  if (area->bY == area->eY) {
+    text.push_back(lines[area->bY].substr(area->bX, area->eX - area->bX + 1));
+    return text;
+  }
+  for (int y = area->bY; y <= area->eY; y++) {
+    if (y == area->bY) {
+      text.push_back(lines[y].substr(area->bX, lines[y].length() - area->bX));
+    } else if (y == area->eY) {
+      text.push_back(lines[y].substr(0, area->eX + 1));
+    } else {
+      text.push_back(lines[y]);
+    }
+  }
+  return text;
+}
+
+textArea LimEditor::getStrAreaOnCur() {
+  // TODO: set const special characters to use everywhere
+  string sc = " ;:(){}[]<>'\"";
+  textArea word;
+  string line = lines[cur.y];
+  if (sc.find(line[cur.x]) != string::npos) {
+    word.bX = cur.x;
+    word.eX = cur.x;
+    word.bY = cur.y;
+    word.eY = cur.y;
+    return word;
+  }
+  int iL = cur.x;
+  int iR = cur.x;
+  while (word.bX < 0 || word.eX < 0) {
+    if (word.bX < 0 && (iL == 0 || sc.find(line[iL - 1]) != string::npos)) {
+      word.bX = iL;
+      word.bY = cur.y;
+    } else {
+      iL--;
+    }
+    if (word.eX < 0 && (iR == line.length() - 1 || sc.find(line[iR + 1]) != string::npos)) {
+      word.eX = iR;
+      word.eY = cur.y;
+    } else {
+      iR++;
+    }
+  }
+  return word;
+}
+
 string LimEditor::getStrOnCur() {
-  string sChars = " :;,.{}[]()";
-  char charOnCur = lines[cur.y][cur.x];
-  if (sChars.find(charOnCur) != string::npos) {
-    return string(1, charOnCur);
+  textArea area = getStrAreaOnCur();
+  vector<string> text = textAreaToString(&area);
+  if (!text.empty()) {
+    return text.front();
   }
-  int xS = cur.x;
-  int len = 1;
-  while (xS > 0 && sChars.find(lines[cur.y][xS - 1]) == string::npos) {
-      xS--;
-  }
-  while (abs(len+xS) <= lines[cur.y].length() && sChars.find(lines[cur.y][xS + len]) == string::npos) {
-      len++;
-  }
-  return lines[cur.y].substr(xS, len);
+  return "";
 }
 
 void LimEditor::searchStrOnCur() {
@@ -1839,11 +1892,11 @@ void LimEditor::fillEmptyLines() {
 }
 
 void LimEditor::fgColor(uint32_t color) {
-  printf("\033[38;2;%d;%d;%dm", (int)config.r(color), (int)config.g(color), (int)config.b(color));
+  printf("\033[38;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
 }
 
 void LimEditor::bgColor(uint32_t color) {
-  printf("\033[48;2;%d;%d;%dm", (int)config.r(color), (int)config.g(color), (int)config.b(color));
+  printf("\033[48;2;%d;%d;%dm", config.r(color), config.g(color), config.b(color));
 }
 
 void LimEditor::printLine(int i) {
@@ -1872,6 +1925,7 @@ void LimEditor::clearLine() {
   }
 }
 
+// TODO: on count < 0, set to lines shown below cur.y and not lines.size()
 void LimEditor::updateRenderedLines(int startLine, int count) {
   cout << "\033[s";
   printf("\033[%d;0H", marginTop + startLine - firstShownLine);
@@ -2143,47 +2197,47 @@ void LimEditor::copySelection() {
   clipboard.copyClip(clip);
 }
 
-void LimEditor::deleteSelection() {
-  if (selectedText.isNull()) return;
-  unsaved = true;
-  checkSelectionPoints(&selectedText);
-  
-  int startLine = selectedText.bY;
-  int endLine = selectedText.eY;
-  
+void LimEditor::deleteTextArea(textArea* area) {
+  checkSelectionPoints(area);
+  int startLine = area->bY;
+  int endLine = area->eY;
   if (startLine == endLine)  {
-    if (lines[startLine].length() == selectedText.eX - selectedText.bX) {
+    if (lines[startLine].length() == area->eX - area->bX) {
       lines.erase(lines.begin() + startLine);
     } else {
-      if (selectedText.eX == lines[startLine].length()) {
-        lines[startLine].erase(selectedText.bX);
+      if (area->eX == lines[startLine].length()) {
+        lines[startLine].erase(area->bX);
         lines[startLine].append(lines[startLine + 1]);
         lines.erase(lines.begin() + startLine + 1);
       } else {
-        lines[startLine].erase(selectedText.bX, selectedText.eX - selectedText.bX + 1);
+        lines[startLine].erase(area->bX, area->eX - area->bX + 1);
       }
     }
   } else {
     int delLines = 0;
-    lines[startLine].erase(selectedText.bX);
+    lines[startLine].erase(area->bX);
     if (endLine - startLine > 1) {
       lines.erase(lines.begin() + startLine + 1, lines.begin() + endLine);
       delLines = endLine - startLine - 1;
     }
-
-    if (selectedText.eX == lines[endLine - delLines].length()) {
+    if (area->eX == lines[endLine - delLines].length()) {
       lines.erase(lines.begin() + endLine - delLines);
     } else {
-      lines[endLine - delLines].erase(0, selectedText.eX + 1);
+      lines[endLine - delLines].erase(0, area->eX + 1);
     }
     lines[startLine].append(lines[endLine - delLines]);
     lines.erase(lines.begin() + endLine - delLines);
   }
-
   if (lines[cur.y].empty()) cur.x = 0;
   else {
-    cur.x = min(selectedText.bX, static_cast<int>(lines[startLine].length()));
+    cur.x = min(area->bX, static_cast<int>(lines[startLine].length()));
   }
+}
+
+void LimEditor::deleteSelection() {
+  if (selectedText.isNull()) return;
+  unsaved = true;
+  deleteTextArea(&selectedText);
   clearSelectionUpdate();
 }
 

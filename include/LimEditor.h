@@ -173,6 +173,8 @@ class LimEditor : public ModeState {
     void goToFileEnd();
     void goToLine(int line);
     void search();
+    vector<string> textAreaToString(textArea* area);
+    textArea getStrAreaOnCur();
     string getStrOnCur();
     void searchStrOnCur();
     int searchForMatches();
@@ -227,6 +229,7 @@ class LimEditor : public ModeState {
     void updateShowSelection();
     void clearSelectionUpdate();
     void copySelection();
+    void deleteTextArea(textArea* area);
     void deleteSelection();
     void checkSelectionPoints(textArea* selection);
     void cpLine();
