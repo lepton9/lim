@@ -104,7 +104,7 @@ void LimEditor::modeNormal() {
       case 'V':
         handleEvent(Event::VLINE);
         break;
-      case 'c':
+      case 'c': {
         if (curInFileTree) {
           copyFileOnCur();
         } else {
@@ -120,6 +120,7 @@ void LimEditor::modeNormal() {
           }
         }
         break;
+      }
       case 'p':
         if (curInFileTree) {
           pasteFileInCurDir();
@@ -156,16 +157,26 @@ void LimEditor::modeNormal() {
         if (curInFileTree) break;
         goToFileEnd();
         break;
-      case 'd':
+      case 'd': {
         if (curInFileTree) {
           removeFileOnCur();
           break;
         }
         c = readKey();
-        if (c == 'd') {
+        if (c == 'i') {
+          if (readKey() == 'w') {
+            selectedText = getStrAreaOnCur();
+            copySelection();
+            deleteSelection();
+            updateRenderedLines(cur.y, 1);
+            syncCurPosOnScr();
+          }
+        }
+        else if (c == 'd') {
           delCpLine();
         }
         break;
+      }
       case 'D':
         if (curInFileTree) break;
         delCpLineEnd();
