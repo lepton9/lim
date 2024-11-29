@@ -20,7 +20,16 @@
 
 using namespace std;
 
-enum sKey {
+enum Keys {
+  ESC_KEY = 27,
+  ENTER_KEY = 10,
+  TAB_KEY = 9,
+  BACKSPACE_KEY = 127,
+  CTRL_F_KEY = 6,
+  CTRL_N_KEY = 14,
+  CTRL_H_KEY = 8,
+  CTRL_L_KEY = 12,
+  CTRL_P_KEY = 16,
   UP_KEY = 400,
   LEFT_KEY,
   RIGHT_KEY,

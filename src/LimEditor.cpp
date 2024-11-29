@@ -27,17 +27,18 @@ void LimEditor::modeNormal() {
     c = readKey();
     //printf("%d ('%c')\n", c, c);
     switch (c) {
-      case 27:
+      case ESC_KEY:
         if (matchesHighlighted()) {
           resetMatchSearch();
         }
         handleEvent(Event::BACK);
         break;
-      case 9: // Tab
-      case 10:
+      case TAB_KEY:
+      case ENTER_KEY:
         if (curInFileTree) {
+          // TODO: stay in filetree
           fTreeSelect();
-          curInFileTree = (c == 9);
+          curInFileTree = (c == TAB_KEY);
           syncCurPosOnScr();
           renderShownText(firstShownLine);
         }
@@ -81,7 +82,7 @@ void LimEditor::modeNormal() {
         handleEvent(Event::BACK);
         break;
       case '/':
-      case 6: // C+f
+      case CTRL_F_KEY: // C+f
         handleEvent(Event::COMMAND);
         search();
         handleEvent(Event::BACK);
@@ -263,24 +264,24 @@ void LimEditor::modeNormal() {
         }
         break;
       }
-      case 14: // C-n
+      case CTRL_N_KEY: // C-n
         ftree.toggleShow();
         curInFileTree = true;
         renderFiletree();
         break;
-      case 8: // C-h
+      case CTRL_H_KEY: // C-h
         if (ftree.isShown() && !curInFileTree) {
           curInFileTree = true;
           syncCurPosOnScr();
         }
         break;
-      case 12: // C-l
+      case CTRL_L_KEY: // C-l
         if (ftree.isShown() && curInFileTree) {
           curInFileTree = false;
           syncCurPosOnScr();
         }
         break;
-      case 16: { // C-p + #, paste from clipboard at index #
+      case CTRL_P_KEY: { // C-p + #, paste from clipboard at index #
         vector<string> lines;
         string nl = "\033[90m\\n\033[0m";
         for (int i = 0; i < clipboard.size(); i++) {
@@ -321,22 +322,22 @@ void LimEditor::modeInput() {
     updateStatBar();
     c = readKey();
     switch (c) {
-      case 27: //Esc
+      case ESC_KEY:
         handleEvent(Event::BACK);
         break;
-      case 10: //Enter
+      case ENTER_KEY:
         unsaved = true;
         newlineEscSeq();
         break;
-      case 9: //Tab
+      case TAB_KEY:
         unsaved = true;
         tabKey();
         break;
-      case 127: //Backspace
+      case BACKSPACE_KEY:
         unsaved = true;
         backspaceKey();
         break;
-      case DEL_KEY: //Delete
+      case DEL_KEY:
         unsaved = true;
         deleteKey();
         break;
@@ -368,14 +369,14 @@ void LimEditor::modeCommand() {
     c = readKey();
 
     switch (c) {
-      case 27:
+      case ESC_KEY:
         handleEvent(Event::BACK);
         syncCurPosOnScr();
         break;
-      case 127: //Backspace
+      case BACKSPACE_KEY:
         comModeDelChar();
         break;
-      case 10: //Enter
+      case ENTER_KEY:
         if (execCommand()) {
           oldCommands.push_back(comLineText);
         }
@@ -437,16 +438,17 @@ void LimEditor::modeVisual() {
     updateShowSelection();
     c = readKey();
     switch (c) {
-      case 27: //Esc
+      case ESC_KEY:
         clearSelectionUpdate();
         handleEvent(Event::BACK);
         break;
-      case 10: //Enter
+      case ENTER_KEY:
         break;
-      case 127: //Backspace
+      case BACKSPACE_KEY:
         break;
-      case DEL_KEY: //Delete
+      case DEL_KEY:
         deleteSelection();
+        handleEvent(Event::BACK);
         break;
       case 'y':
         copySelection();
@@ -702,14 +704,14 @@ string LimEditor::queryUser(string query) {
   string ans = "";
   while(1) {
     char c = readKey();
-    if (c == 27) {
+    if (c == ESC_KEY) {
       comLineText.clear();
       return "";
     }
-    else if (c == 10) {
+    else if (c == ENTER_KEY) {
       return ans;
     }
-    else if (c == 127 && ans.length() > 0) {
+    else if (c == BACKSPACE_KEY && ans.length() > 0) {
       comModeDelChar();
       ans.pop_back();
       updateCommandBar();
@@ -1510,7 +1512,6 @@ void LimEditor::goToLine(int line) {
   if (curIsAtMaxPos()) {
     cur.x = maxPosOfLine(cur.y);
   }
-  
   if (line < firstShownLine || line > firstShownLine + textAreaLength()) {
     int diff = firstShownLine - line;
     if (diff > 0 && diff <= 10) {
