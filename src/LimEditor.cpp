@@ -304,6 +304,11 @@ void LimEditor::modeNormal() {
         if (curInFileTree) curMoveFileTree(c);
         else curMove(c);
         break;
+      default: {
+        if (isdigit(c)) {
+          // TODO: exec key commands multiple times
+        }
+      }
     }
   }
 }
@@ -486,6 +491,14 @@ void LimEditor::modeVisual() {
       case 'G':
         goToFileEnd();
         updateSelectedText();
+        break;
+      case '<':
+        shiftLeft(1, 0);
+        handleEvent(Event::BACK);
+        break;
+      case '>':
+        shiftRight(1, 0);
+        handleEvent(Event::BACK);
         break;
 
       //Movement
@@ -1170,15 +1183,14 @@ void removeCharFromBeg(string* str, char c, int n) {
   }
 }
 
-// TODO: shift by indentAm, if selected text, shift all the lines that have selection
-// shifts lines amount of lines in the direction
-// direction useless if there is selected text
-// if selected text, shifts the lines selected, lines amount 
-// direction:
-// < 0 up, > 0 down, == 0 one line
 void LimEditor::shiftLeft(int line_count = 1, int direction = 0) {
   if (!selectedText.isNull()) {
-    // TODO:
+    checkSelectionPoints(&selectedText);
+    int count = line_count;
+    line_count = selectedText.eY - selectedText.bY + 1;
+    for (int i = selectedText.bY; i < selectedText.bY + line_count; i++) {
+      removeCharFromBeg(&lines[i], ' ', count * config.indentAm);
+    }
     clearSelectionUpdate();
   } else {
     int startLine = cur.y;
@@ -1196,7 +1208,12 @@ void LimEditor::shiftLeft(int line_count = 1, int direction = 0) {
 
 void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
   if (!selectedText.isNull()) {
-    // TODO:
+    checkSelectionPoints(&selectedText);
+    int count = line_count;
+    line_count = selectedText.eY - selectedText.bY + 1;
+    for (int i = selectedText.bY; i < selectedText.bY + line_count; i++) {
+      lines[i].insert(0, string(count * config.indentAm, ' '));
+    }
     clearSelectionUpdate();
   } else {
     int startLine = cur.y;
