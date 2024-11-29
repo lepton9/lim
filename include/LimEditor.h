@@ -157,6 +157,8 @@ class LimEditor : public ModeState {
     void curDown();
     void curLeft();
     void curRight();
+    void shiftLeft(int lines, int direction);
+    void shiftRight(int lines, int direction);
     void findCharRight(char c);
     void findCharLeft(char c);
     void findCharRightBefore(char c);
