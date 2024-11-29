@@ -149,7 +149,7 @@ class LimEditor : public ModeState {
     void comModeDelChar();
     int readKey();
     void printStartUpScreen();
-    void fTreeSelect();
+    bool fTreeSelect();
     void curMoveFileTree(int c);
     void refreshFileTree();
     void createFile();

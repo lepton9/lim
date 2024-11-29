@@ -36,9 +36,8 @@ void LimEditor::modeNormal() {
       case TAB_KEY:
       case ENTER_KEY:
         if (curInFileTree) {
-          // TODO: stay in filetree
-          fTreeSelect();
-          curInFileTree = (c == TAB_KEY);
+          bool isFile = fTreeSelect();
+          curInFileTree = (c == TAB_KEY) || !isFile;
           syncCurPosOnScr();
           renderShownText(firstShownLine);
         }
@@ -863,8 +862,9 @@ void LimEditor::printStartUpScreen() {
   cout << "\033[u";
 }
 
-void LimEditor::fTreeSelect() {
-  if (!curInFileTree) return;
+// Returns true if a file is selected
+bool LimEditor::fTreeSelect() {
+  if (!curInFileTree) return false;
 
   if (ftree.getElementOnCur()->isDir) {
     firstShownFile = 0;
@@ -872,6 +872,7 @@ void LimEditor::fTreeSelect() {
     ftree.changeDirectory(ftree.getElementOnCur()->path);
     renderFiletree();
     syncCurPosOnScr();
+    return false;
   } else {
     if (unsaved) {
       while(1) {
@@ -884,13 +885,14 @@ void LimEditor::fTreeSelect() {
           unsaved = false;
           break;
         }
-        else if (ans == "" && comLineText.empty()) return;
+        else if (ans == "" && comLineText.empty()) return false;
       }
     }
     path = ftree.getElementOnCur()->path.parent_path();
     readFile(ftree.getElementOnCur()->name);
     firstShownLine = 0;
     cur.x = 0, cur.y = 0;
+    return true;
   }
 }
 
