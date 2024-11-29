@@ -1,5 +1,6 @@
 #include "../include/LimEditor.h"
 #include <cctype>
+#include <string>
 #include <vector>
 
 using namespace std;
@@ -508,8 +509,20 @@ void LimEditor::modeVisual() {
         updateSelectedText();
         break;
 
-      default:
+      default: {
+        if (isdigit(c)) {
+          int d = c - '0';
+          c = readKey();
+          if (c == '<') {
+            shiftLeft(d, 0);
+            handleEvent(Event::BACK);
+          } else if (c == '>') {
+            shiftRight(d, 0);
+            handleEvent(Event::BACK);
+          }
+        }
         break;
+      }
     }
   }
 }
@@ -1183,7 +1196,8 @@ void removeCharFromBeg(string* str, char c, int n) {
   }
 }
 
-void LimEditor::shiftLeft(int line_count = 1, int direction = 0) {
+// direction < 0: UP, direction > 0: DOWN, direction == 0: one line
+void LimEditor::shiftLeft(int line_count, int direction) {
   if (!selectedText.isNull()) {
     checkSelectionPoints(&selectedText);
     int count = line_count;
@@ -1206,6 +1220,7 @@ void LimEditor::shiftLeft(int line_count = 1, int direction = 0) {
   unsaved = true;
 }
 
+// direction < 0: UP, direction > 0: DOWN, direction == 0: one line
 void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
   if (!selectedText.isNull()) {
     checkSelectionPoints(&selectedText);
