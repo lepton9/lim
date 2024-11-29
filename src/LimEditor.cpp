@@ -216,12 +216,30 @@ void LimEditor::modeNormal() {
         c = readKey();
         findCharLeftAfter(c);
         break;
-      case '<': // Remove indentAm of spaces from beg
-        if (readKey() == '<') {
-          // TODO:
+      case '<': {
+        char ch = readKey();
+        if (ch == '<') {
+          shiftLeft(1, 0);
+        } else {
+          int line_count = -1;
+          int direction = 0;
+          if (isdigit(ch)) {
+            line_count = charTOunsigned(&ch);
+            ch = readKey();
+          }
+          if (ch == 'j') {
+            if (line_count < 0) line_count = 2;
+            direction = 1;
+          }
+          else if (ch == 'k') {
+            if (line_count < 0) line_count = 2;
+            direction = -1;
+          }
+          shiftLeft((line_count < 0) ? 1 : line_count, direction);
         }
         break;
-      case '>': { // Add indentAm of spaces to beg
+      }
+      case '>': {
         char ch = readKey();
         if (ch == '>') {
           shiftRight(1, 0);
@@ -1141,18 +1159,24 @@ void LimEditor::curRight() {
   }
 }
 
+// TODO: to utils
+void removeCharFromBeg(string* str, char c, int n) {
+  for (int i = 0; i < n; i++) {
+    if (!str->empty() && str->front() == c) {
+      str->erase(0, 1);
+    } else {
+      break;
+    }
+  }
+}
+
 // TODO: shift by indentAm, if selected text, shift all the lines that have selection
 // shifts lines amount of lines in the direction
 // direction useless if there is selected text
 // if selected text, shifts the lines selected, lines amount 
 // direction:
 // < 0 up, > 0 down, == 0 one line
-void LimEditor::shiftLeft(int lines = 1, int direction = 0) {
-
-}
-
-void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
-  int indent = config.indentAm;
+void LimEditor::shiftLeft(int line_count = 1, int direction = 0) {
   if (!selectedText.isNull()) {
     // TODO:
     clearSelectionUpdate();
@@ -1163,10 +1187,29 @@ void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
       line_count = cur.y - startLine + 1;
     }
     for (int i = startLine; i < startLine + line_count && i < lines.size(); i++) {
-      lines[i].insert(0, string(indent, ' '));
+      removeCharFromBeg(&lines[i], ' ', config.indentAm);
     }
     updateRenderedLines(startLine, line_count);
   }
+  unsaved = true;
+}
+
+void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
+  if (!selectedText.isNull()) {
+    // TODO:
+    clearSelectionUpdate();
+  } else {
+    int startLine = cur.y;
+    if (direction < 0) {
+      startLine = std::max(0, cur.y - (line_count - 1));
+      line_count = cur.y - startLine + 1;
+    }
+    for (int i = startLine; i < startLine + line_count && i < lines.size(); i++) {
+      lines[i].insert(0, string(config.indentAm, ' '));
+    }
+    updateRenderedLines(startLine, line_count);
+  }
+  unsaved = true;
 }
 
 void LimEditor::findCharRight(char c) {
