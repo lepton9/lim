@@ -1956,6 +1956,10 @@ void LimEditor::syncCurPosOnScr() {
       setCurToScreenHor();
       renderShownText(firstShownLine);
     }
+    if (curIsOutOfScreenVer()) {
+      setCurToScreenVer();
+      renderShownText(firstShownLine);
+    }
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
     printf("\033[%d;%dH", cur.y - firstShownLine + marginTop, cur.x - firstShownCol + marginLeft + padLeft);
     fflush(stdout);
@@ -1973,8 +1977,21 @@ bool LimEditor::curIsAtMaxPos() {
   return false;
 }
 
+bool LimEditor::curIsOutOfScreenVer() {
+  return cur.y > firstShownLine + textAreaLength() || cur.y < firstShownLine;
+}
+
 bool LimEditor::curIsOutOfScreenHor() {
   return cur.x > firstShownCol + textAreaWidth() || cur.x < firstShownCol;
+}
+
+void LimEditor::setCurToScreenVer() {
+  if (cur.y < firstShownLine) {
+    firstShownLine = max(cur.y - textAreaLength() / 2, 0);
+  } else if (cur.y > firstShownLine + textAreaLength()) {
+    firstShownLine = min(cur.y - textAreaLength() / 2,
+                         (int)lines.size() - textAreaLength() - 1);
+  }
 }
 
 void LimEditor::setCurToScreenHor() {
@@ -2351,7 +2368,7 @@ void LimEditor::clearSelectionUpdate() {
   cur.x = selectedText.bX;
   checkSelectionPoints(&selectedText);
   syncCurPosOnScr();
-  updateRenderedLines(selectedText.bY);
+  updateRenderedLines(firstShownLine);
   selectedText.clear();
 }
 

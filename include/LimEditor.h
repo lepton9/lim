@@ -212,7 +212,9 @@ class LimEditor : public ModeState {
     void getCurPosOnScr(int* x, int* y);
     void syncCurPosOnScr();
     bool curIsAtMaxPos();
+    bool curIsOutOfScreenVer();
     bool curIsOutOfScreenHor();
+    void setCurToScreenVer();
     void setCurToScreenHor();
     int maxPosOfLine(int y);
     int minPosOfLineIWS(int y);
