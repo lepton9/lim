@@ -284,7 +284,17 @@ void LimEditor::modeNormal() {
         vector<string> lines;
         string nl = "\033[90m\\n\033[0m";
         for (int i = 0; i < clipboard.size(); i++) {
-            lines.push_back("\033[34m" + to_string(i) + "\033[0m" + ": " + ((clipboard[i].front().isFullLine()) ? nl : "") + clipboard[i].front().text().substr(0, textAreaWidth() - 10) + ((clipboard[i].front().isFullLine()) ? nl : "") + ((clipboard[i].size() > 1) ? (clipboard[i].size() == 2 && clipboard[i].back().text() == "") ? nl : " [" + to_string(clipboard[i].size()) + "L]" : ""));
+          lines.push_back(
+              "\033[34m" + to_string(i) + "\033[0m" + ": " +
+              ((clipboard[i].front().isFullLine()) ? nl : "") +
+              clipboard[i].front().text().substr(0, textAreaWidth() - 10) +
+              ((clipboard[i].front().isFullLine()) ? nl : "") +
+              ((clipboard[i].size() > 1)
+                   ? (clipboard[i].size() == 2 &&
+                      clipboard[i].back().text() == "")
+                         ? nl
+                         : " [" + to_string(clipboard[i].size()) + "L]"
+                   : ""));
         }
         showInfoText(lines, lines.size());
         c = readKey();
@@ -307,8 +317,21 @@ void LimEditor::modeNormal() {
         break;
       default: {
         if (isdigit(c)) {
-          // TODO: exec key commands multiple times
+          int d = c - '0';
+          int moveKey = readKey();
+          switch (moveKey) {
+            case 'h': case 'j': case 'k': case 'l':
+            case 'H': case 'J': case 'K': case 'L':
+            case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
+              if (!curInFileTree) {
+                for (int i = 0; i < d; i++) {
+                  curMove(moveKey);
+                }
+              }
+              break;
+          }
         }
+        break;
       }
     }
   }
@@ -513,13 +536,24 @@ void LimEditor::modeVisual() {
       default: {
         if (isdigit(c)) {
           int d = c - '0';
-          c = readKey();
-          if (c == '<') {
-            shiftLeft(d, 0);
-            handleEvent(Event::BACK);
-          } else if (c == '>') {
-            shiftRight(d, 0);
-            handleEvent(Event::BACK);
+          int key = readKey();
+          switch (key) {
+            case 'h': case 'j': case 'k': case 'l':
+            case 'H': case 'J': case 'K': case 'L':
+            case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
+              if (!curInFileTree) {
+                for (int i = 0; i < d; i++) {
+                  curMove(key);
+                }
+                updateSelectedText();
+              }
+              break;
+            case '<':
+              shiftLeft(d, 0);
+              handleEvent(Event::BACK);
+            case '>':
+              shiftRight(d, 0);
+              handleEvent(Event::BACK);
           }
         }
         break;
