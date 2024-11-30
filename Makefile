@@ -9,7 +9,7 @@ CC := g++
 MAIN := lim
 PLATFORM := $(shell uname)
 
-OBJ := LimEditor ModeState Clipboard Clip Config Filetree
+OBJ := LimEditor ModeState Clipboard Clip Config Filetree utils
 OBJECT_FILES := $(addprefix $(OBJS)/,$(addsuffix .o,$(OBJ)))
 
 $(MAIN): $(OBJECT_FILES) | $(BIN)

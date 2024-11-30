@@ -189,6 +189,7 @@ class LimEditor : public ModeState {
     vector<string> textAreaToString(textArea* area);
     textArea getStrAreaOnCur();
     string getStrOnCur();
+    void searchStrOnSelection();
     void searchStrOnCur();
     int searchForMatches();
     void highlightMatches();

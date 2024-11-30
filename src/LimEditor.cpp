@@ -1,4 +1,5 @@
 #include "../include/LimEditor.h"
+#include "../include/utils.h"
 #include <cctype>
 #include <string>
 #include <vector>
@@ -469,6 +470,15 @@ void LimEditor::modeVisual() {
       case DEL_KEY:
         deleteSelection();
         handleEvent(Event::BACK);
+        break;
+      case '*':
+        if (curInFileTree) break;
+        searchStrOnSelection();
+        handleEvent(Event::BACK);
+        break;
+      case ':':
+        // TODO: commands on selected text
+        handleEvent(Event::COMMAND);
         break;
       case 'y':
         copySelection();
@@ -1642,10 +1652,28 @@ string LimEditor::getStrOnCur() {
   return "";
 }
 
+void LimEditor::searchStrOnSelection() {
+  if (selectedText.isNull()) return;
+  resetMatchSearch();
+  vector<string> text = textAreaToString(&selectedText);
+  selectedText.clear();
+  searchStr = text.front();
+  if (trim_c(searchStr).empty()) {
+    searchStr = "";
+    return;
+  }
+  int matches = searchForMatches();
+  if (matches > 0) {
+    curMatch = getMatchClosestToCur();
+    gotoNextMatch();
+    highlightMatches();
+  }
+}
+
 void LimEditor::searchStrOnCur() {
   resetMatchSearch();
   searchStr = getStrOnCur();
-  if (searchStr == " ") {
+  if (trim_c(searchStr).empty()) {
     searchStr = "";
     return;
   }

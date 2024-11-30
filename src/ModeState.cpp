@@ -19,9 +19,11 @@ void ModeState::handleEvent(Event event) {
     break;
   case State::VISUAL:
     if (event == Event::BACK) sToNormal();
+    else if (event == Event::COMMAND) sToCommand();
     break;
   case State::VLINE:
     if (event == Event::BACK) sToNormal();
+    else if (event == Event::COMMAND) sToCommand();
     break;
 
   default:
