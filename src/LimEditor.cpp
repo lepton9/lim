@@ -318,15 +318,13 @@ void LimEditor::modeNormal() {
       default: {
         if (isdigit(c)) {
           int d = c - '0';
-          int moveKey = readKey();
-          switch (moveKey) {
+          int key = readKey();
+          switch (key) {
             case 'h': case 'j': case 'k': case 'l':
             case 'H': case 'J': case 'K': case 'L':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
               if (!curInFileTree) {
-                for (int i = 0; i < d; i++) {
-                  curMove(moveKey);
-                }
+                curMove(key, d);
               }
               break;
           }
@@ -542,10 +540,9 @@ void LimEditor::modeVisual() {
             case 'H': case 'J': case 'K': case 'L':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
               if (!curInFileTree) {
-                for (int i = 0; i < d; i++) {
-                  curMove(key);
-                }
+                curMove(key, d);
                 updateSelectedText();
+                updateRenderedLines(firstShownLine);
               }
               break;
             case '<':
@@ -1088,30 +1085,32 @@ void LimEditor::curTreeDown() {
   ftree.cY++;
 }
 
-void LimEditor::curMove(int c) {
-  if (c == 'h' || c == LEFT_KEY) {
-    curLeft();
-  } else if (c == 'j' || c == DOWN_KEY) {
-    curDown();
-  } else if (c == 'k' || c == UP_KEY) {
-    curUp();
-  } else if (c == 'l' || c == RIGHT_KEY) {
-    curRight();
-  } 
-  else if (c == 'H') {
-    gotoBegOfLastInner();
-  } else if (c == 'J') {
-    if (firstShownLine + textAreaLength() < lines.size() - 1) {
-      cur.y++;
-      scrollDown();
+void LimEditor::curMove(int c, int n) {
+  for (int i = 0; i < n; i++) {
+    if (c == 'h' || c == LEFT_KEY) {
+      curLeft();
+    } else if (c == 'j' || c == DOWN_KEY) {
+      curDown();
+    } else if (c == 'k' || c == UP_KEY) {
+      curUp();
+    } else if (c == 'l' || c == RIGHT_KEY) {
+      curRight();
     }
-  } else if (c == 'K') {
-    if (firstShownLine > 0) {
-      cur.y--;
-      scrollUp();
+    else if (c == 'H') {
+      gotoBegOfLastInner();
+    } else if (c == 'J') {
+      if (firstShownLine + textAreaLength() < lines.size() - 1) {
+        cur.y++;
+        scrollDown();
+      }
+    } else if (c == 'K') {
+      if (firstShownLine > 0) {
+        cur.y--;
+        scrollUp();
+      }
+    } else if (c == 'L') {
+      gotoBegOfNextInner();
     }
-  } else if (c == 'L') {
-    gotoBegOfNextInner();
   }
   updateStatBar();
   updateLineNums(firstShownLine);
@@ -2110,7 +2109,7 @@ void LimEditor::clearLine() {
 void LimEditor::updateRenderedLines(int startLine, int count) {
   cout << "\033[s";
   printf("\033[%d;0H", marginTop + startLine - firstShownLine);
-  if (count < 0) count = textAreaLength() - (cur.y - firstShownLine) + 1;
+  if (count < 0) count = textAreaLength() - (startLine - firstShownLine) + 1;
 
   int maxIter = min(textAreaLength() - (startLine - firstShownLine)
       , textAreaLength() + 1);

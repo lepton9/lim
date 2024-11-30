@@ -161,7 +161,7 @@ class LimEditor : public ModeState {
     void pasteFileInCurDir();
     void curTreeUp();
     void curTreeDown();
-    void curMove(int c);
+    void curMove(int c, int n = 1);
     void curUp();
     void curDown();
     void curLeft();
