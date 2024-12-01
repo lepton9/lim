@@ -20,10 +20,12 @@ void ModeState::handleEvent(Event event) {
   case State::VISUAL:
     if (event == Event::BACK) sToNormal();
     else if (event == Event::COMMAND) sToCommand();
+    else if (event == Event::INPUT) sToInput();
     break;
   case State::VLINE:
     if (event == Event::BACK) sToNormal();
     else if (event == Event::COMMAND) sToCommand();
+    else if (event == Event::INPUT) sToInput();
     break;
 
   default:

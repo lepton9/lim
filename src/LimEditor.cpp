@@ -513,7 +513,8 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
       case 'c':
-        // TODO: delete and input mode
+        deleteSelection();
+        handleEvent(Event::INPUT);
         break;
       case 'p':
         if (!clipboard.empty()) {
