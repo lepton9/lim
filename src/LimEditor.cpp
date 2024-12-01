@@ -340,6 +340,17 @@ void LimEditor::modeNormal() {
         break;
       }
 
+      case CTRL_D_KEY:
+        cur.y = min(cur.y + scroll_amount, (int)lines.size() - 1);
+        scrollDown(scroll_amount);
+        syncCurPosOnScr();
+        break;
+      case CTRL_U_KEY:
+        cur.y = max(cur.y - scroll_amount, 0);
+        scrollUp(scroll_amount);
+        syncCurPosOnScr();
+        break;
+
       //Movement
       case 'h': case 'j': case 'k': case 'l':
       case 'H': case 'J': case 'K': case 'L':
@@ -567,6 +578,19 @@ void LimEditor::modeVisual() {
       case '>':
         shiftRight(1, 0);
         handleEvent(Event::BACK);
+        break;
+
+      case CTRL_D_KEY:
+        cur.y = min(cur.y + scroll_amount, (int)lines.size() - 1);
+        scrollDown(scroll_amount);
+        syncCurPosOnScr();
+        updateSelectedText();
+        break;
+      case CTRL_U_KEY:
+        cur.y = max(cur.y - scroll_amount, 0);
+        scrollUp(scroll_amount);
+        syncCurPosOnScr();
+        updateSelectedText();
         break;
 
       //Movement
@@ -2041,21 +2065,23 @@ int LimEditor::minPosOfLineIWS(int y) {
   return lines[y].find_first_not_of(' ');
 }
 
-void LimEditor::scrollUp() {
-  renderShownText(--firstShownLine);
-}
-
-void LimEditor::scrollDown() {
-  renderShownText(++firstShownLine);
-}
-
-void LimEditor::scrollLeft() {
-  firstShownCol--;
+void LimEditor::scrollUp(int n) {
+  firstShownLine = max(firstShownLine - n, 0);
   renderShownText(firstShownLine);
 }
 
-void LimEditor::scrollRight() {
-  firstShownCol++;
+void LimEditor::scrollDown(int n) {
+  firstShownLine = min(firstShownLine + n, (int)lines.size() - textAreaLength() - 1);
+  renderShownText(firstShownLine);
+}
+
+void LimEditor::scrollLeft(int n) {
+  firstShownCol = max(firstShownCol - n, 0);
+  renderShownText(firstShownLine);
+}
+
+void LimEditor::scrollRight(int n) {
+  firstShownCol = min(firstShownCol + n, (int)lines[cur.y].length() - textAreaWidth() - 1);
   renderShownText(firstShownLine);
 }
 

@@ -29,6 +29,8 @@ enum Keys {
   CTRL_H_KEY = 8,
   CTRL_L_KEY = 12,
   CTRL_P_KEY = 16,
+  CTRL_D_KEY = 4,
+  CTRL_U_KEY = 21,
   UP_KEY = 400,
   LEFT_KEY,
   RIGHT_KEY,
@@ -84,6 +86,7 @@ class LimEditor : public ModeState {
     };
 
     const string s_chars = " ~!@#$%^&*=(){}[]|:`'\";+-<>?,.\\/";
+    const int scroll_amount = 30;
 
     int marginLeft = 7;
     int marginTop = 1;
@@ -215,10 +218,10 @@ class LimEditor : public ModeState {
     void setCurToScreenHor();
     int maxPosOfLine(int y);
     int minPosOfLineIWS(int y);
-    void scrollUp();
-    void scrollDown();
-    void scrollLeft();
-    void scrollRight();
+    void scrollUp(int n = 1);
+    void scrollDown(int n = 1);
+    void scrollLeft(int n = 1);
+    void scrollRight(int n = 1);
     void checkLineNumSpace(string strLNum);
     string showLineNum(int lNum);
     void updateLineNums(int startLine);
