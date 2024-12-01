@@ -111,7 +111,18 @@ void LimEditor::modeNormal() {
         if (curInFileTree) {
           copyFileOnCur();
         } else {
-          if (readKey() == 'i') {
+          c = readKey();
+          if (c == 'w') {
+            selectedText.bY = cur.y;
+            selectedText.bX = cur.x;
+            gotoEndOfNextInner();
+            selectedText.eY = cur.y;
+            selectedText.eX = cur.x;
+            deleteSelection();
+            syncCurPosOnScr();
+            handleEvent(Event::INPUT);
+          }
+          else if (c == 'i') {
             if (readKey() == 'w') {
               textArea area = getStrAreaOnCur();
               deleteTextArea(&area);
