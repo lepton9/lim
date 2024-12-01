@@ -226,7 +226,7 @@ void LimEditor::modeNormal() {
           int line_count = -1;
           int direction = 0;
           if (isdigit(ch)) {
-            line_count = charTOunsigned(&ch);
+            line_count = charToUnsigned(&ch);
             ch = readKey();
           }
           if (ch == 'j') {
@@ -249,7 +249,7 @@ void LimEditor::modeNormal() {
           int line_count = -1;
           int direction = 0;
           if (isdigit(ch)) {
-            line_count = charTOunsigned(&ch);
+            line_count = charToUnsigned(&ch);
             ch = readKey();
           }
           if (ch == 'j') {
@@ -570,7 +570,7 @@ void LimEditor::modeVisual() {
 }
 
 string LimEditor::fullpath() {
-    return path + "/" + fileName;
+  return path + "/" + fileName;
 }
 
 void LimEditor::start(string fName) {
@@ -590,9 +590,7 @@ void LimEditor::start(string fName) {
 
 bool LimEditor::readConfig() {
   config.parse();
-
   updateVariables();
-
   return true;
 }
 
@@ -1232,17 +1230,6 @@ void LimEditor::curRight() {
   }
 }
 
-// TODO: to utils
-void removeCharFromBeg(string* str, char c, int n) {
-  for (int i = 0; i < n; i++) {
-    if (!str->empty() && str->front() == c) {
-      str->erase(0, 1);
-    } else {
-      break;
-    }
-  }
-}
-
 // direction < 0: UP, direction > 0: DOWN, direction == 0: one line
 void LimEditor::shiftLeft(int line_count, int direction) {
   if (!selectedText.isNull()) {
@@ -1340,23 +1327,6 @@ void LimEditor::fitTextHorizontal() {
     }
     printf("\033[%dG", cur.x + marginLeft + padLeft);
   }
-}
-
-bool LimEditor::is_integer(const string &s){
-    return regex_match(s, regex("[+-]?[0-9]+"));
-}
-
-unsigned LimEditor::charTOunsigned(const char * c) {
-    unsigned unsignInt = 0;
-    while (*c) {
-        unsignInt = unsignInt * 10 + (*c - '0');
-        c++;
-    }
-    return unsignInt;
-}
-
-int LimEditor::charToInt(const char * c) {
-  return (*c == '-') ? -charTOunsigned(c+ 1) : charTOunsigned(c);
 }
 
 void LimEditor::gotoBegOfNextInner() {
@@ -2056,10 +2026,6 @@ void LimEditor::scrollLeft() {
 void LimEditor::scrollRight() {
   firstShownCol++;
   renderShownText(firstShownLine);
-}
-
-string LimEditor::alignR(string s, int w) {
-  return string(w-s.length(), ' ') + s;
 }
 
 void LimEditor::checkLineNumSpace(string strLNum) {

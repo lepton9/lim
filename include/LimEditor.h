@@ -9,7 +9,6 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <regex>
 #include <sys/ioctl.h>
 #include "../include/stev.h"
 #include "../include/ModeState.h"
@@ -173,9 +172,6 @@ class LimEditor : public ModeState {
     void findCharRightBefore(char c);
     void findCharLeftAfter(char c);
     void fitTextHorizontal();
-    bool is_integer(const string &s);
-    unsigned charTOunsigned(const char * c);
-    int charToInt(const char * c);
     void gotoBegOfNextInner();
     void gotoEndOfNextInner();
     void gotoBegOfLastInner();
@@ -223,7 +219,6 @@ class LimEditor : public ModeState {
     void scrollDown();
     void scrollLeft();
     void scrollRight();
-    string alignR(string s, int w);
     void checkLineNumSpace(string strLNum);
     string showLineNum(int lNum);
     void updateLineNums(int startLine);
