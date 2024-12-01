@@ -7,17 +7,46 @@
 
 A basic Vim-like text editor.
 
+
 ## Commands
-``` Console
-:/"string" or C+f to search for matches
-:r/"s1"/"s2" to replace all matches for s1 with s2
-:r "string" to replace all matches
-:rename rename current file
-:restart restart editor
-:set change config file variables
-:setconfig set path to .limconfig
-:configpath to show the path to the config file
-:path to show the path of the current file or directory
-C+n to toggle file manager
-C+p + # to paste text from clipboard at index #
-```
+
+| Command               | Function                                        |
+|-----------------------|-------------------------------------------------|
+| `:w`                  | Write file                                      |
+| `:q`                  | Quit                                            |
+| `:help`               | Show help box                                   |
+| `:/{string}`          | Search all matches in file for `string`         |
+| `:r {string}`         | Replace all found matches with `string`         |
+| `:r/{s1}/{s2}`        | Replace all matches for `s1` with `s2`          |
+| `:rename`             | Rename current file                             |
+| `:restart`            | Restart editor                                  |
+| `:set`                | Set config variable values                      |
+| `:setconfig`          | Set path to `.limconfig`                        |
+| `:configpath`         | Show config file path                           |
+| `:path`               | Show path of current file or directory          |
+| `:!`                  | Execute bash commands                           |
+
+## Keymaps
+
+| Keymap                | Function                                        |
+|-----------------------|-------------------------------------------------|
+| `h`, `j`, `k`, `l`    | Movement                                        |
+| `gg`, `G`             | Go to beginning and end of the file             |
+| `yy`, `yw`, `yiw`     | Yanking                                         |
+| `dd`, `dw`, `diw`     | Deleting and yanking                            |
+| `cw`, `ciw`           | Delete and change                               |
+| `e`, `w`, `b`         | Inner word movement                             |
+| `E`, `W`, `B`         | Movement over whitespace                        |
+| `f{char}`, `F{char}`  | Find and go to the first occurrence of `char`   |
+| `t{char}`, `T{char}`  | Go to before the first occurrence of `char`     |
+| `>>`                  | Shift to left                                   |
+| `<<`                  | Shift to right                                  |
+| `C+d`                 | Scroll down                                     |
+| `C+u`                 | Scroll up                                       |
+| `C+n`                 | Toggle file tree                                |
+| `C+h`                 | Move to file tree if open                       |
+| `C+l`                 | Move to file from file tree                     |
+| `C+f`, `/`            | Search for matches                              |
+| `C+p + #`             | Paste text from clipboard at index #            |
+| `C+n`                 | Toggle file tree                                |
+
