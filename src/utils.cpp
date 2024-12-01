@@ -1,6 +1,18 @@
 #include "../include/utils.h"
 #include <regex>
 
+std::string strip(std::string& str) {
+  if (str.empty()) return str;
+  for (std::string::iterator it = str.begin(); it != str.end(); ) {
+    if (*it == ' ') {
+      it = str.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return str;
+}
+
 std::string trim(std::string &str) {
   str.erase(str.find_last_not_of(' ') + 1);
   str.erase(0, str.find_first_not_of(' '));
@@ -44,3 +56,7 @@ std::string alignR(std::string s, int w) {
   return std::string(w - s.length(), ' ') + s;
 }
 
+bool is_hex(std::string const &s) {
+  return s.compare(0, 2, "0x") == 0 && s.size() > 2 &&
+         s.find_first_not_of("0123456789abcdefABCDEF", 2) == std::string::npos;
+}

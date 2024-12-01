@@ -35,7 +35,6 @@ class Config {
     void writeToConfFile(std::string v, std::string p);
     bool handleKeyValue(std::string key, std::string value);
     void setDefault();
-    bool is_hex(std::string const& s);
     bool validVariable(std::string var);
     std::string variables[9] = {
       "tab_indent", 

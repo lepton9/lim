@@ -50,3 +50,18 @@ A basic Vim-like text editor.
 | `C+p + #`             | Paste text from clipboard at index #            |
 | `C+n`                 | Toggle file tree                                |
 
+## Config file
+
+```
+// .limconfig
+
+tab_indent = {int}
+cursor_wrap = {true | false}
+number = {true | false}
+number_style = {normal | relative}
+comline_visible = {true | false}
+bg_color = 0xRRGGBB
+fg_color = 0xRRGGBB
+sb_bg_color = 0xRRGGBB
+sb_fg_color = 0xRRGGBB
+```

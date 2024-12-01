@@ -1,17 +1,5 @@
 #include "../include/Config.h"
-#include <vector>
-
-std::string strip(std::string& str) {
-  if (str.empty()) return str;
-  for (std::string::iterator it = str.begin(); it != str.end(); ) {
-    if (*it == ' ') {
-      it = str.erase(it);
-    } else {
-      ++it;
-    }
-  }
-  return str;
-}
+#include "../include/utils.h"
 
 bool Config::handleKeyValue(std::string key, std::string value) {
   bool changed = false;
@@ -94,10 +82,9 @@ void Config::parse() {
   std::fstream* file = openFile();
   if (!file) return;
   if (file->peek() == EOF) return;
-  
   std::string line;
   while (getline(*file, line)) {
-    if (strip(line) == "") {
+    if (strip(line) == "" || line.rfind("//", 0) == 0) {
       continue;
     }
     int equalSignPos = line.find_first_of("=");
@@ -108,7 +95,6 @@ void Config::parse() {
     std::string value = line.substr(equalSignPos + 1);
     handleKeyValue(key, value);
   }
-
   delete file;
 }
 
@@ -118,15 +104,15 @@ std::fstream* Config::openFile() {
 }
 
 void Config::setDefault() {
-    indentAm = 2;
-    curWrap = true;
-    lineNum = true;
-    relativenumber = false;
-    comline_visible = false;
-    bg_color = 0x000000;
-    fg_color = 0xFFFFFF;
-    sb_bg_color = 0xFFFFFF;
-    sb_fg_color = 0x000000;
+  indentAm = 2;
+  curWrap = true;
+  lineNum = true;
+  relativenumber = false;
+  comline_visible = false;
+  bg_color = 0x000000;
+  fg_color = 0xFFFFFF;
+  sb_bg_color = 0xFFFFFF;
+  sb_fg_color = 0x000000;
 }
 
 uint8_t Config::r(uint32_t color) {
@@ -137,12 +123,6 @@ uint8_t Config::g(uint32_t color) {
 }
 uint8_t Config::b(uint32_t color) {
   return ((0x0000FF&color));
-}
-
-bool Config::is_hex(std::string const& s) {
-  return s.compare(0, 2, "0x") == 0
-      && s.size() > 2
-      && s.find_first_not_of("0123456789abcdefABCDEF", 2) == std::string::npos;
 }
 
 bool Config::setFilePath(std::string path) {
