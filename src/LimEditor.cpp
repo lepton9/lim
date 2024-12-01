@@ -166,7 +166,17 @@ void LimEditor::modeNormal() {
           break;
         }
         c = readKey();
-        if (c == 'i') {
+        if (c == 'w') {
+          selectedText.bY = cur.y;
+          selectedText.bX = cur.x;
+          gotoEndOfNextInner();
+          selectedText.eY = cur.y;
+          selectedText.eX = cur.x;
+          copySelection();
+          deleteSelection();
+          syncCurPosOnScr();
+        }
+        else if (c == 'i') {
           if (readKey() == 'w') {
             selectedText = getStrAreaOnCur();
             copySelection();
@@ -186,7 +196,19 @@ void LimEditor::modeNormal() {
       case 'y': {
         if (curInFileTree) break;
         c = readKey();
-        if (c == 'i') {
+        if (c == 'w') {
+          selectedText.bY = cur.y;
+          selectedText.bX = cur.x;
+          gotoEndOfNextInner();
+          selectedText.eY = cur.y;
+          selectedText.eX = cur.x;
+          cur.y = selectedText.bY;
+          cur.x = selectedText.bX;
+          copySelection();
+          selectedText.clear();
+          syncCurPosOnScr();
+        }
+        else if (c == 'i') {
           if (readKey() == 'w') {
             selectedText = getStrAreaOnCur();
             copySelection();
@@ -489,6 +511,9 @@ void LimEditor::modeVisual() {
         copySelection();
         deleteSelection();
         handleEvent(Event::BACK);
+        break;
+      case 'c':
+        // TODO: delete and input mode
         break;
       case 'p':
         if (!clipboard.empty()) {
@@ -1386,11 +1411,7 @@ void LimEditor::gotoEndOfNextInner() {
   int x = cur.x;
   for (int i = 1; i < lines[cur.y].length() - cur.x; i++) {
     char cn = lines[cur.y][cur.x + i + 1];
-    if (cn == ' ') {
-      cur.x += i;
-      break;
-    }
-    else if (s_chars.find(cn) != string::npos && s_chars.find(lines[cur.y][cur.x]) == string::npos || cur.x + i == lines[cur.y].size() - 1) {
+    if (s_chars.find(cn) != string::npos && s_chars.find(lines[cur.y][cur.x]) == string::npos || cur.x + i == lines[cur.y].size() - 1) {
       cur.x += i;
       break;
     }
