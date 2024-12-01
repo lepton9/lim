@@ -113,11 +113,11 @@ void LimEditor::modeNormal() {
         } else {
           c = readKey();
           if (c == 'w') {
+            textArea area = getStrAreaOnCur();
             selectedText.bY = cur.y;
             selectedText.bX = cur.x;
-            gotoEndOfNextInner();
-            selectedText.eY = cur.y;
-            selectedText.eX = cur.x;
+            selectedText.eY = area.eY;
+            selectedText.eX = area.eX;
             deleteSelection();
             syncCurPosOnScr();
             handleEvent(Event::INPUT);
@@ -178,11 +178,11 @@ void LimEditor::modeNormal() {
         }
         c = readKey();
         if (c == 'w') {
+          textArea area = getStrAreaOnCur();
           selectedText.bY = cur.y;
           selectedText.bX = cur.x;
-          gotoEndOfNextInner();
-          selectedText.eY = cur.y;
-          selectedText.eX = cur.x;
+          selectedText.eY = area.eY;
+          selectedText.eX = area.eX;
           copySelection();
           deleteSelection();
           syncCurPosOnScr();
@@ -208,13 +208,11 @@ void LimEditor::modeNormal() {
         if (curInFileTree) break;
         c = readKey();
         if (c == 'w') {
+          textArea area = getStrAreaOnCur();
           selectedText.bY = cur.y;
           selectedText.bX = cur.x;
-          gotoEndOfNextInner();
-          selectedText.eY = cur.y;
-          selectedText.eX = cur.x;
-          cur.y = selectedText.bY;
-          cur.x = selectedText.bX;
+          selectedText.eY = area.eY;
+          selectedText.eX = area.eX;
           copySelection();
           selectedText.clear();
           syncCurPosOnScr();
