@@ -60,3 +60,11 @@ bool is_hex(std::string const &s) {
   return s.compare(0, 2, "0x") == 0 && s.size() > 2 &&
          s.find_first_not_of("0123456789abcdefABCDEF", 2) == std::string::npos;
 }
+
+unsigned concat_unsigned(unsigned x, unsigned y) {
+  unsigned pow = 10;
+  while (y >= pow) {
+    pow *= 10;
+  }
+  return x * pow + y;
+}
