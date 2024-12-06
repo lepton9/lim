@@ -261,8 +261,12 @@ void LimEditor::modeNormal() {
           int line_count = -1;
           int direction = 0;
           if (isdigit(ch)) {
-            line_count = charToUnsigned(&ch);
+             line_count = ch - '0';
             ch = readKey();
+            while (isdigit(ch)) {
+              line_count = concat_unsigned(line_count, ch - '0');
+              ch = readKey();
+            }
           }
           if (ch == 'j') {
             if (line_count < 0) line_count = 2;
@@ -284,8 +288,12 @@ void LimEditor::modeNormal() {
           int line_count = -1;
           int direction = 0;
           if (isdigit(ch)) {
-            line_count = charToUnsigned(&ch);
+            line_count = ch - '0';
             ch = readKey();
+            while (isdigit(ch)) {
+              line_count = concat_unsigned(line_count, ch - '0');
+              ch = readKey();
+            }
           }
           if (ch == 'j') {
             if (line_count < 0) line_count = 2;
