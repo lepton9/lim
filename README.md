@@ -39,6 +39,7 @@ A basic Vim-like text editor.
 | `E`, `W`, `B`         | Movement over whitespace                        |
 | `f{char}`, `F{char}`  | Find and go to the first occurrence of `char`   |
 | `t{char}`, `T{char}`  | Go to before the first occurrence of `char`     |
+| `r{char}`             | Replace the char under cursor with `char`       |
 | `>>`                  | Shift to left                                   |
 | `<<`                  | Shift to right                                  |
 | `C+d`                 | Scroll down                                     |

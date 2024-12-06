@@ -200,6 +200,7 @@ class LimEditor : public ModeState {
     bool matchesHighlighted();
     int replaceMatch(const string newStr, pos& p);
     void replaceAllMatches(string newStr);
+    void replaceTextAreaChar(textArea* area, char c);
     bool checkForFunctions(string func);
     bool execBashCommand(string com = "");
     bool execCommand();

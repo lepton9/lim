@@ -58,6 +58,10 @@ void LimEditor::modeNormal() {
       case 'r':
         if (curInFileTree) {
           renameFileOnCur();
+        } else {
+          c = readKey();
+          lines[cur.y][cur.x] = c;
+          updateRenderedLines(cur.y, 1);
         }
         break;
       case 'I':
@@ -543,6 +547,14 @@ void LimEditor::modeVisual() {
           pasteClipboard();
         }
         handleEvent(Event::BACK);
+        break;
+      case 'r':
+        if (!curInFileTree) {
+          c = readKey();
+          replaceTextAreaChar(&selectedText, c);
+          clearSelectionUpdate();
+          handleEvent(Event::BACK);
+        }
         break;
 
       case 'W': // Beginning of next word
@@ -1819,6 +1831,15 @@ void LimEditor::replaceAllMatches(string newStr) {
   gotoNextMatch();
   highlightMatches();
   syncCurPosOnScr();
+}
+
+void LimEditor::replaceTextAreaChar(textArea* area, char c) {
+  checkSelectionPoints(area);
+  for (int y = area->bY; y <= area->eY; y++) {
+    int bI = (y == area->bY) ? area->bX : 0;
+    int eI = (y == area->eY) ? area->eX : lines[y].length() - 1;
+    std::fill(lines[y].begin() + bI, lines[y].begin() + eI + 1, c);
+  }
 }
 
 bool LimEditor::checkForFunctions(string func) {
