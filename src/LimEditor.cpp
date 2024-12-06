@@ -364,8 +364,12 @@ void LimEditor::modeNormal() {
         break;
       default: {
         if (isdigit(c)) {
-          int d = c - '0';
+          unsigned d = c - '0';
           int key = readKey();
+          while (isdigit(key)) {
+            d = concat_unsigned(d, key - '0');
+            key = readKey();
+          }
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
             case 'H': case 'J': case 'K': case 'L':
@@ -614,8 +618,12 @@ void LimEditor::modeVisual() {
 
       default: {
         if (isdigit(c)) {
-          int d = c - '0';
+          unsigned d = c - '0';
           int key = readKey();
+          while (isdigit(key)) {
+            d = concat_unsigned(d, key - '0');
+            key = readKey();
+          }
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
             case 'H': case 'J': case 'K': case 'L':

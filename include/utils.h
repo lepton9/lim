@@ -9,3 +9,4 @@ unsigned charToUnsigned(const char *c);
 int charToInt(const char *c);
 std::string alignR(std::string s, int w);
 bool is_hex(std::string const &s);
+unsigned concat_unsigned(unsigned x, unsigned y);
