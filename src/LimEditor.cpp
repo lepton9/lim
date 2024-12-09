@@ -716,7 +716,7 @@ void LimEditor::setconfig(string path) {
   }
   success = config.setFilePath(newPath);
   if (success) {
-    showMsg("Path set to " + newPath);
+    showMsg("Path set to " + newPath, true);
     updateVariables();
     renderShownText(firstShownLine);
   } else {
@@ -725,7 +725,7 @@ void LimEditor::setconfig(string path) {
 }
 
 void LimEditor::showConfigPath(string arg) {
-  showMsg(config.getFilePath());
+  showMsg(config.getFilePath(), true);
   syncCurPosOnScr();
 }
 
@@ -751,7 +751,7 @@ void LimEditor::set(string var) {
   if (success) {
     updateVariables();
     renderShownText(firstShownLine);
-    showMsg("Updated " + var);
+    showMsg("Updated " + var, true);
   }
   else {
     showErrorMsg("Unknown option: " + var);
@@ -776,7 +776,7 @@ void LimEditor::confirmRename(string newName) {
     int result = std::rename(fileName.c_str(), newName.c_str());
     if (result == 0) {
       fileName = newName;
-      showMsg("File renamed to \"" + newName + "\"");
+      showMsg("File renamed to \"" + newName + "\"", true);
       return;
     }
     else {
@@ -794,7 +794,7 @@ void LimEditor::confirmRename(string newName) {
 }
 
 void LimEditor::showPath(string args) {
-  showMsg(fullpath());
+  showMsg(fullpath(), true);
   syncCurPosOnScr();
 }
 
@@ -1081,7 +1081,7 @@ void LimEditor::removeDirOnCur() {
       closeCurFile();
     }
     refreshFileTree();
-    showMsg(to_string(c) + " files or directories deleted");
+    showMsg(to_string(c) + " files or directories deleted", true);
     syncCurPosOnScr();
   }
   else {
@@ -1102,7 +1102,7 @@ void LimEditor::removeFileOnCur() {
   if (ans == "y") {
     filesystem::remove(fPathRem);
     refreshFileTree();
-    showMsg("File " + fPathRem + " was removed");
+    showMsg("File " + fPathRem + " was removed", true);
     syncCurPosOnScr();
     if (fPathRem == fullpath()) {
       closeCurFile();
@@ -1127,7 +1127,7 @@ void LimEditor::renameFileOnCur() {
     updateStatBar();
   }
   refreshFileTree();
-  showMsg(oldPath + " -> " + newPath);
+  showMsg(oldPath + " -> " + newPath, true);
   syncCurPosOnScr();
 }
 
@@ -1135,9 +1135,9 @@ void LimEditor::copyFileOnCur() {
   if (!curInFileTree) return;
   ftree.copy();
   if (ftree.copied->isDir) {
-    showMsg("Directory " + ftree.copied->path.string() + " copied recursively");
+    showMsg("Directory " + ftree.copied->path.string() + " copied recursively", true);
   } else {
-    showMsg("File " + ftree.copied->path.string() + " copied");
+    showMsg("File " + ftree.copied->path.string() + " copied", true);
   }
   syncCurPosOnScr();
 }
@@ -1154,7 +1154,7 @@ void LimEditor::pasteFileInCurDir() {
   ftree.paste(newPath);
 
   refreshFileTree();
-  showMsg(oldPath + " copied to " + newPath);
+  showMsg(oldPath + " copied to " + newPath, true);
   syncCurPosOnScr();
 }
 
@@ -1872,7 +1872,6 @@ bool LimEditor::checkForFunctions(string func) {
   for (const auto &function : functions) {
     if (function.name == f) {
       (this->*function.f)(param);
-      sleep(1);
       return true;
     }
   }
@@ -2002,11 +2001,13 @@ int LimEditor::textAreaWidth() {
   return w;
 }
 
-void LimEditor::showMsg(string msg) {
+void LimEditor::showMsg(string msg, bool force) {
   if (!config.comline_visible) updateStatBar(true);
   comLineText = msg;
   updateCommandBar();
-  if (!config.comline_visible) sleep(1);
+  if (!config.comline_visible && force) {
+    sleep(1);
+  }
 }
 
 void LimEditor::showErrorMsg(string error) {

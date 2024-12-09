@@ -206,7 +206,7 @@ class LimEditor : public ModeState {
     bool execCommand();
     int textAreaLength();
     int textAreaWidth();
-    void showMsg(string msg);
+    void showMsg(string msg, bool force = false);
     void showErrorMsg(string error);
     string getPerrorString(const string& errorMsg);
     void clsResetCur();
