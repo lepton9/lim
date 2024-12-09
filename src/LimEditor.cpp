@@ -440,7 +440,11 @@ void LimEditor::modeCommand() {
   int c;
   int comInd = oldCommands.size();
   string curCom = "";
-  comLineText = ":";
+  if (!keepComlineText) {
+    comLineText = ":";
+  } else {
+    keepComlineText = false;
+  }
   updateStatBar();
 
   while (currentState == State::COMMAND) {
@@ -455,7 +459,7 @@ void LimEditor::modeCommand() {
       case BACKSPACE_KEY:
         comModeDelChar();
         break;
-      case ENTER_KEY:
+      case ENTER_KEY: {
         if (execCommand()) {
           oldCommands.push_back(comLineText);
         }
@@ -463,6 +467,7 @@ void LimEditor::modeCommand() {
         handleEvent(Event::BACK);
         syncCurPosOnScr();
         break;
+      }
       case UP_KEY:
         if (curCom == "") curCom = comLineText;
         if (comInd > 0) {
@@ -534,10 +539,13 @@ void LimEditor::modeVisual() {
         searchStrOnSelection();
         handleEvent(Event::BACK);
         break;
-      case ':':
         // TODO: commands on selected text
+      case ':': {
+        comLineText = ":" + selection_indicator;
+        keepComlineText = true;
         handleEvent(Event::COMMAND);
         break;
+      }
       case 'y':
         copySelection();
         clearSelectionUpdate();
@@ -1649,7 +1657,28 @@ void LimEditor::search() {
   }
 }
 
-vector<string> LimEditor::textAreaToString(textArea* area) {
+string LimEditor::textAreaToString(textArea* area) {
+  string text;
+  if (area->bY == area->eY) {
+    text.append(lines[area->bY].substr(area->bX, area->eX - area->bX + 1));
+    return text;
+  }
+  for (int y = area->bY; y <= area->eY; y++) {
+    if (y == area->bY) {
+      text.append(lines[y].substr(area->bX, lines[y].length() - area->bX) + '\n');
+    } else if (y == area->eY) {
+      text.append(lines[y].substr(0, area->eX + 1));
+    } else {
+      text.append(lines[y] + '\n');
+    }
+  }
+  if (area->bY != area->eY) {
+    text = "\"" + text + "\"";
+  }
+  return text;
+}
+
+vector<string> LimEditor::textAreaToVector(textArea* area) {
   vector<string> text;
   if (area->bY == area->eY) {
     text.push_back(lines[area->bY].substr(area->bX, area->eX - area->bX + 1));
@@ -1698,7 +1727,7 @@ textArea LimEditor::getStrAreaOnCur() {
 
 string LimEditor::getStrOnCur() {
   textArea area = getStrAreaOnCur();
-  vector<string> text = textAreaToString(&area);
+  vector<string> text = textAreaToVector(&area);
   if (!text.empty()) {
     return text.front();
   }
@@ -1708,7 +1737,7 @@ string LimEditor::getStrOnCur() {
 void LimEditor::searchStrOnSelection() {
   if (selectedText.isNull()) return;
   resetMatchSearch();
-  vector<string> text = textAreaToString(&selectedText);
+  vector<string> text = textAreaToVector(&selectedText);
   selectedText.clear();
   searchStr = text.front();
   if (trim_c(searchStr).empty()) {
@@ -1928,6 +1957,13 @@ bool LimEditor::execCommand() {
 
   if (comLineText.substr(0,2) == ":!") {
     return execBashCommand(comLineText.substr(2));
+  }
+
+  if (comLineText.substr(0, 7) == (":" + selection_indicator + "!") &&
+      !selectedText.isNull()) {
+    string pipeString = textAreaToString(&selectedText);
+    selectedText.clear();
+    return execBashCommand(comLineText.substr(7) + ' ' + pipeString);
   }
 
   if (checkForFunctions(com)) {

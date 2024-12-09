@@ -86,6 +86,7 @@ class LimEditor : public ModeState {
     };
 
     const string s_chars = " ~!@#$%^&*=(){}[]|:`'\";+-<>?,.\\/";
+    const string selection_indicator = "'<,'>";
     const int scroll_amount = 30;
 
     int marginLeft = 7;
@@ -108,6 +109,7 @@ class LimEditor : public ModeState {
     bool curInFileTree = false;
     Filetree ftree;
 
+    bool keepComlineText = false;
     string comLineText = "";
     vector<string> oldCommands;
     Clipboard clipboard;
@@ -185,7 +187,8 @@ class LimEditor : public ModeState {
     void goToFileEnd();
     void goToLine(int line);
     void search();
-    vector<string> textAreaToString(textArea* area);
+    string textAreaToString(textArea* area);
+    vector<string> textAreaToVector(textArea* area);
     textArea getStrAreaOnCur();
     string getStrOnCur();
     void searchStrOnSelection();
