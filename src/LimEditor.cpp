@@ -1994,8 +1994,26 @@ bool LimEditor::execCommand() {
   }
 
   if (comLineText.substr(0,2) == ":/" || comLineText.substr(0,3) == ":s/") {
-    searchStr = comLineText.substr(comLineText.find_first_of('/') + 1);
+    string str = comLineText.substr(comLineText.find_first_of('/') + 1);
+    int indSlash = str.find('/');
+    searchStr = (indSlash == string::npos) ? str
+                                           : str.substr(0, indSlash);
     if (searchForMatches() > 0) {
+      gotoNextMatch();
+      highlightMatches();
+    }
+    handleEvent(Event::BACK);
+    return true;
+  }
+
+  if (comLineText.substr(0,7) == (":" + selection_indicator + "/")) {
+    string str = comLineText.substr(7);
+    int indSlash = str.find('/');
+    searchStr = (indSlash == string::npos) ? str
+                                           : str.substr(0, indSlash);
+    int matches = searchForMatchesArea(&selectedText);
+    clearSelectionUpdate();
+    if (matches > 0) {
       gotoNextMatch();
       highlightMatches();
     }

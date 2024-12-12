@@ -15,8 +15,9 @@ A basic Vim-like text editor.
 | `:w`                  | Write file                                      |
 | `:q`                  | Quit                                            |
 | `:help`               | Show help box                                   |
-| `:/{string}`          | Search all matches in file for `string`         |
-| `:r {string}`         | Replace all found matches with `string`         |
+| `:/{str}`             | Search all matches in file for `str`            |
+| `:'<,'>/{str}`        | Search matches for `str` inside selection       |
+| `:r {str}`            | Replace all found matches with `str`            |
 | `:r/{s1}/{s2}`        | Replace all matches for `s1` with `s2`          |
 | `:%s/{s1}/{s2}`       | Replace all matches for `s1` with `s2`          |
 | `:'<,'>s/{s1}/{s2}`   | Replace `s1` with `s2` after selection          |
