@@ -454,6 +454,9 @@ void LimEditor::modeCommand() {
     switch (c) {
       case ESC_KEY:
         handleEvent(Event::BACK);
+        if (!selectedText.isNull()) {
+          clearSelectionUpdate();
+        }
         syncCurPosOnScr();
         break;
       case BACKSPACE_KEY:
@@ -1767,6 +1770,25 @@ void LimEditor::searchStrOnCur() {
   }
 }
 
+int LimEditor::searchForMatchesArea(textArea* area) {
+  if (!area) {
+    return searchForMatches();
+  }
+  checkSelectionPoints(area);
+  for (int y = area->bY; y <= area->eY && y < lines.size(); y++) {
+    int xB = (y == area->bY) ? area->bX : 0;
+    int xE = (y == area->eY) ? area->eX : lines[y].length();
+    int xp = lines[y].find(searchStr, xB);
+    while (xp != std::string::npos && xp + searchStr.length() <= xE) {
+      matches.push_back({xp, y});
+      xp = lines[y].find(searchStr, xp + 1);
+    }
+  }
+  showMsg("<\"" + searchStr +"\"> " + to_string(matches.size()) + " matches");
+  syncCurPosOnScr();
+  return matches.size();
+}
+
 int LimEditor::searchForMatches() {
   for (int yp = 0; yp < lines.size(); yp++) {
     int xp = lines[yp].find(searchStr);
@@ -1971,8 +1993,8 @@ bool LimEditor::execCommand() {
     return true;
   }
 
-  if (comLineText.substr(0,2) == ":/") {
-    searchStr = comLineText.substr(2);
+  if (comLineText.substr(0,2) == ":/" || comLineText.substr(0,3) == ":s/") {
+    searchStr = comLineText.substr(comLineText.find_first_of('/') + 1);
     if (searchForMatches() > 0) {
       gotoNextMatch();
       highlightMatches();
@@ -1980,6 +2002,41 @@ bool LimEditor::execCommand() {
     handleEvent(Event::BACK);
     return true;
   }
+
+  if (comLineText.substr(0,4) == ":\%s/") {
+    string str = comLineText.substr(4);
+    int indSlash = str.find('/');
+    searchStr = (indSlash == string::npos) ? str
+                                           : str.substr(0, indSlash);
+    string replaceString = (indSlash == string::npos) ? ""
+                                           : str.substr(indSlash + 1);
+    if (searchForMatches() > 0) {
+      gotoNextMatch();
+      highlightMatches();
+      replaceAllMatches(replaceString);
+    }
+    handleEvent(Event::BACK);
+    return true;
+  }
+
+  if (comLineText.substr(0,8) == (":" + selection_indicator + "s/")) {
+    string str = comLineText.substr(8);
+    int indSlash = str.find('/');
+    searchStr = (indSlash == string::npos) ? str
+                                           : str.substr(0, indSlash);
+    string replaceString = (indSlash == string::npos) ? ""
+                                           : str.substr(indSlash + 1);
+    int matches = searchForMatchesArea(&selectedText);
+    clearSelectionUpdate();
+    if (matches > 0) {
+      gotoNextMatch();
+      highlightMatches();
+      replaceAllMatches(replaceString);
+    }
+    handleEvent(Event::BACK);
+    return true;
+  }
+
   if (comLineText.substr(0,3) == ":r/") {
     string str = comLineText.substr(3);
     int posDash = str.find_last_of("/");
@@ -2560,19 +2617,34 @@ void LimEditor::deleteSelection() {
   clearSelectionUpdate();
 }
 
+void LimEditor::swapSelectionVISUAL(textArea* selection) {
+  if (selection->eY < selection->bY || 
+    (selection->bY == selection->eY && selection->eX < selection->bX)) {
+    swap(selection->bY, selection->eY);
+    swap(selection->bX, selection->eX);
+  }
+}
+
+void LimEditor::swapSelectionVLINE(textArea* selection) {
+  if (selection->eY < selection->bY) {
+    swap(selection->bY, selection->eY);
+    selection->bX = 0;
+    selection->eX = lines[selection->eY].length();
+  }
+}
+
 void LimEditor::checkSelectionPoints(textArea* selection) {
   if (currentState == State::VISUAL) {
-    if (selection->eY < selection->bY || 
-        (selection->bY == selection->eY && selection->eX < selection->bX)) {
-      swap(selection->bY, selection->eY);
-      swap(selection->bX, selection->eX);
-    }
+    swapSelectionVISUAL(selection);
   }
   else if (currentState == State::VLINE) {
-    if (selection->eY < selection->bY) {
-      swap(selection->bY, selection->eY);
-      selection->bX = 0;
-      selection->eX = lines[selection->eY].length();
+    swapSelectionVLINE(selection);
+  }
+  else {
+    if (selection->bX == 0 && selection->eX == lines[selection->eY].length()) {
+      swapSelectionVLINE(selection);
+    } else {
+      swapSelectionVISUAL(selection);
     }
   }
 }

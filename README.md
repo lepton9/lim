@@ -18,6 +18,8 @@ A basic Vim-like text editor.
 | `:/{string}`          | Search all matches in file for `string`         |
 | `:r {string}`         | Replace all found matches with `string`         |
 | `:r/{s1}/{s2}`        | Replace all matches for `s1` with `s2`          |
+| `:%s/{s1}/{s2}`       | Replace all matches for `s1` with `s2`          |
+| `:'<,'>s/{s1}/{s2}`   | Replace `s1` with `s2` after selection          |
 | `:rename`             | Rename current file                             |
 | `:restart`            | Restart editor                                  |
 | `:set`                | Set config variable values                      |

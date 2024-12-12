@@ -193,6 +193,7 @@ class LimEditor : public ModeState {
     string getStrOnCur();
     void searchStrOnSelection();
     void searchStrOnCur();
+    int searchForMatchesArea(textArea* area = NULL);
     int searchForMatches();
     void highlightMatches();
     int getMatchClosestToCur();
@@ -249,6 +250,8 @@ class LimEditor : public ModeState {
     void copySelection();
     void deleteTextArea(textArea* area);
     void deleteSelection();
+    void swapSelectionVISUAL(textArea* selection);
+    void swapSelectionVLINE(textArea* selection);
     void checkSelectionPoints(textArea* selection);
     void cpLine();
     void cpLineEnd();
