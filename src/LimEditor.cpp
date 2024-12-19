@@ -55,6 +55,25 @@ void LimEditor::modeNormal() {
         handleEvent(Event::INPUT);
         if (!curIsAtMaxPos()) curRight();
         break;
+      case 'o': {
+        int insertInd = cur.y + 1;
+        lines.insert(lines.begin() + insertInd, "");
+        cur = {0, insertInd};
+        syncCurPosOnScr();
+        updateRenderedLines(firstShownLine);
+        unsaved = true;
+        handleEvent(Event::INPUT);
+        break;
+      }
+      case 'O': {
+        lines.insert(lines.begin() + cur.y, "");
+        cur.x = 0;
+        syncCurPosOnScr();
+        updateRenderedLines(firstShownLine);
+        unsaved = true;
+        handleEvent(Event::INPUT);
+        break;
+      }
       case 'r':
         if (curInFileTree) {
           renameFileOnCur();

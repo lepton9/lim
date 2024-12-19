@@ -34,6 +34,8 @@ A basic Vim-like text editor.
 | Keymap                | Function                                        |
 |-----------------------|-------------------------------------------------|
 | `h`, `j`, `k`, `l`    | Movement                                        |
+| `i`, `I`, `a`, `A`    | Insert mode                                     |
+| `o`, `O`              | Insert mode on new line                         |
 | `gg`, `G`             | Go to beginning and end of the file             |
 | `yy`, `yw`, `yiw`     | Yanking                                         |
 | `dd`, `dw`, `diw`     | Deleting and yanking                            |
