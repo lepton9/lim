@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-      - main  # Trigger only on push to main branch
+      - main
     tags:
       - 'v*.*.*'
 
@@ -23,7 +23,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lim-build
+          name: lim-linux
           path: bin/build/lim
 
   release:
@@ -38,16 +38,31 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: lim-build  # Name of the uploaded artifact
-          path: release/   # Download location within the workflow
+          name: lim-linux
+          path: release/
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Compress
+        run: |
+          cd release
+          zip -r lim-linux.zip lim-linux
+
+      - name: List
+        run: |
+          tree release
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           body: |
             ## Release ${{ github.ref_name }}
-          files: release/lim  # Path to the downloaded binary
+            ### Linux
+            ``` console
+            unzip lim-linux.zip
+            cd lim-linux
+            chmod +x lim
+            ```
+          files: release/lim-linux.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
