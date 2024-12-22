@@ -373,11 +373,13 @@ void LimEditor::modeNormal() {
 
       case CTRL_D_KEY:
         cur.y = min(cur.y + scroll_amount, (int)lines.size() - 1);
+        if (cur.x > lines[cur.y].length()) cur.x = max((int)lines[cur.y].length() - 1, 0);
         scrollDown(scroll_amount);
         syncCurPosOnScr();
         break;
       case CTRL_U_KEY:
         cur.y = max(cur.y - scroll_amount, 0);
+        if (cur.x > lines[cur.y].length()) cur.x = max((int)lines[cur.y].length() - 1, 0);
         scrollUp(scroll_amount);
         syncCurPosOnScr();
         break;
@@ -2240,6 +2242,7 @@ void LimEditor::scrollUp(int n) {
 
 void LimEditor::scrollDown(int n) {
   firstShownLine = min(firstShownLine + n, (int)lines.size() - textAreaLength() - 1);
+  if (firstShownLine < 0) firstShownLine = 0;
   renderShownText(firstShownLine);
 }
 
