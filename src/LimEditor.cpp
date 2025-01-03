@@ -2302,9 +2302,11 @@ void LimEditor::updateLineNums(int startLine) {
 }
 
 void LimEditor::fillEmptyLines() {
-  if (lines.size() < textAreaLength()) {
+  int emptyLines = textAreaLength() - (lines.size() - firstShownLine);
+  if (emptyLines > 0) {
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
-    for (int i = 0; i <= textAreaLength() - lines.size(); i++) {
+    printf("\033[%d;0H", textAreaLength() - emptyLines + 1);
+    for (int i = 0; i <= emptyLines; i++) {
       printf("\033[40;34m\033[%dG\033[0K%s\033[1E", padLeft, alignR("~", lineNumPad).c_str());
     }
     cout << "\033[0m";
@@ -2360,7 +2362,7 @@ void LimEditor::updateRenderedLines(int startLine, int count) {
     if (!config.relativenumber) cout << showLineNum(i + 1);
     printLine(i);
   }
-  if (count == lines.size()) fillEmptyLines();
+  fillEmptyLines();
   cout << "\033[u" << flush;
   if (config.relativenumber) updateLineNums(firstShownLine);
 }
