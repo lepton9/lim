@@ -250,6 +250,7 @@ class LimEditor : public ModeState {
     void copySelection();
     void deleteTextArea(textArea* area);
     void deleteSelection();
+    void replaceSelectionEmpty();
     void swapSelectionVISUAL(textArea* selection);
     void swapSelectionVLINE(textArea* selection);
     void checkSelectionPoints(textArea* selection);

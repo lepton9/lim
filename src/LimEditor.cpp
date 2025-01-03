@@ -581,7 +581,7 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
       case 'c':
-        deleteSelection();
+        replaceSelectionEmpty();
         handleEvent(Event::INPUT);
         break;
       case 'p':
@@ -2656,6 +2656,16 @@ void LimEditor::deleteSelection() {
   if (selectedText.isNull()) return;
   unsaved = true;
   deleteTextArea(&selectedText);
+  clearSelectionUpdate();
+}
+
+void LimEditor::replaceSelectionEmpty() {
+  if (selectedText.isNull()) return;
+  unsaved = true;
+  deleteTextArea(&selectedText);
+  if (currentState == State::VLINE) {
+    lines.insert(lines.begin() + selectedText.bY, "");
+  }
   clearSelectionUpdate();
 }
 
