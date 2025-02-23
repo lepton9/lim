@@ -42,6 +42,7 @@ A basic Vim-like text editor.
 | `cw`, `ciw`           | Delete and change                               |
 | `e`, `w`, `b`         | Inner word movement                             |
 | `E`, `W`, `B`         | Movement over whitespace                        |
+| `J`                   | Join the line below with the current line       |
 | `f{char}`, `F{char}`  | Find and go to the first occurrence of `char`   |
 | `t{char}`, `T{char}`  | Go to before the first occurrence of `char`     |
 | `r{char}`             | Replace the char under cursor with `char`       |

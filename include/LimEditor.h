@@ -172,6 +172,7 @@ class LimEditor : public ModeState {
     void curRight();
     void shiftLeft(int lines, int direction);
     void shiftRight(int lines, int direction);
+    void joinLines(int n);
     void findCharRight(char c);
     void findCharLeft(char c);
     void findCharRightBefore(char c);

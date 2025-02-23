@@ -272,6 +272,9 @@ void LimEditor::modeNormal() {
         c = readKey();
         findCharLeftAfter(c);
         break;
+      case 'J':
+        joinLines(1);
+        break;
       case '<': {
         char ch = readKey();
         if (ch == '<') {
@@ -386,7 +389,6 @@ void LimEditor::modeNormal() {
 
       //Movement
       case 'h': case 'j': case 'k': case 'l':
-      case 'H': case 'J': case 'K': case 'L':
       case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
         if (curInFileTree) curMoveFileTree(c);
         else curMove(c);
@@ -401,11 +403,13 @@ void LimEditor::modeNormal() {
           }
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
-            case 'H': case 'J': case 'K': case 'L':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
               if (!curInFileTree) {
                 curMove(key, d);
               }
+              break;
+            case 'J':
+              joinLines(d);
               break;
           }
         }
@@ -666,7 +670,6 @@ void LimEditor::modeVisual() {
           }
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
-            case 'H': case 'J': case 'K': case 'L':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
               if (!curInFileTree) {
                 curMove(key, d);
@@ -1395,6 +1398,20 @@ void LimEditor::shiftRight(int line_count = 1, int direction = 0) {
     updateRenderedLines(startLine, line_count);
   }
   unsaved = true;
+}
+
+void LimEditor::joinLines(int n) {
+  for (int i = 0; i < n; i++) {
+    if (cur.y == lines.size() - 1) continue;
+    string joinedLine = lines[cur.y + 1];
+    lines.erase(lines.begin() + cur.y + 1);
+    trim_beg(joinedLine);
+    if (!joinedLine.empty()) {
+      lines[cur.y].append(" " + joinedLine);
+    }
+    unsaved = true;
+  }
+  updateRenderedLines(cur.y);
 }
 
 void LimEditor::findCharRight(char c) {
