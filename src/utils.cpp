@@ -13,16 +13,25 @@ std::string strip(std::string& str) {
   return str;
 }
 
-std::string trim(std::string &str) {
-  str.erase(str.find_last_not_of(' ') + 1);
+std::string trim_beg(std::string &str) {
   str.erase(0, str.find_first_not_of(' '));
   return str;
 }
 
-std::string trim_c(std::string str) {
+std::string trim_end(std::string &str) {
   str.erase(str.find_last_not_of(' ') + 1);
-  str.erase(0, str.find_first_not_of(' '));
   return str;
+}
+
+std::string trim(std::string &str) {
+  trim_end(str);
+  trim_beg(str);
+  return str;
+}
+
+std::string trim_c(std::string str) {
+  str = trim_end(str);
+  return trim_beg(str);
 }
 
 void removeCharFromBeg(std::string* str, char c, int n) {

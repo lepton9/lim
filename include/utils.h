@@ -1,6 +1,8 @@
 #include <string>
 
 std::string strip(std::string& str);
+std::string trim_beg(std::string &str);
+std::string trim_end(std::string &str);
 std::string trim(std::string &str);
 std::string trim_c(std::string str);
 void removeCharFromBeg(std::string* str, char c, int n);
