@@ -1438,11 +1438,17 @@ void LimEditor::joinLines(int n) {
     lines.erase(lines.begin() + cur.y + 1);
     trim_beg(joinedLine);
     if (!joinedLine.empty()) {
+      string curLine = lines[cur.y];
+      cur.x = curLine.length();
+      if (curLine.empty()) {
+        lines[cur.y].append(joinedLine);
+      }
       lines[cur.y].append(" " + joinedLine);
     }
     unsaved = true;
   }
   updateRenderedLines(cur.y);
+  syncCurPosOnScr();
 }
 
 void LimEditor::findCharRight(char c) {
