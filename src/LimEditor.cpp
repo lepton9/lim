@@ -26,6 +26,10 @@ void LimEditor::modeNormal() {
   while(currentState == State::NORMAL) {
     updateStatBar();
     c = readKey();
+    if (curInFileTree) {
+      keyFiletree(c);
+      continue;
+    }
     //printf("%d ('%c')\n", c, c);
     switch (c) {
       case ESC_KEY:
@@ -36,22 +40,11 @@ void LimEditor::modeNormal() {
         break;
       case TAB_KEY:
       case ENTER_KEY:
-        if (curInFileTree) {
-          bool isFile = fTreeSelect();
-          curInFileTree = (c == TAB_KEY) || !isFile;
-          syncCurPosOnScr();
-          renderShownText(firstShownLine);
-        }
         break;
       case 'i':
-        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         break;
       case 'a':
-        if (curInFileTree) {
-          createFile();
-          break;
-        }
         handleEvent(Event::INPUT);
         if (!curIsAtMaxPos()) curRight();
         break;
@@ -75,22 +68,16 @@ void LimEditor::modeNormal() {
         break;
       }
       case 'r':
-        if (curInFileTree) {
-          renameFileOnCur();
-        } else {
-          c = readKey();
-          lines[cur.y][cur.x] = c;
-          updateRenderedLines(cur.y, 1);
-        }
+        c = readKey();
+        lines[cur.y][cur.x] = c;
+        updateRenderedLines(cur.y, 1);
         break;
       case 'I':
-        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         cur.x = minPosOfLineIWS(cur.y);
         syncCurPosOnScr();
         break;
       case 'A':
-        if (curInFileTree) break;
         handleEvent(Event::INPUT);
         cur.x = maxPosOfLine(cur.y);
         syncCurPosOnScr();
@@ -111,7 +98,6 @@ void LimEditor::modeNormal() {
         handleEvent(Event::BACK);
         break;
       case '*':
-        if (curInFileTree) break;
         searchStrOnCur();
         break;
       case 'n':
@@ -131,38 +117,30 @@ void LimEditor::modeNormal() {
         handleEvent(Event::VLINE);
         break;
       case 'c': {
-        if (curInFileTree) {
-          copyFileOnCur();
-        } else {
-          c = readKey();
-          if (c == 'w') {
+        c = readKey();
+        if (c == 'w') {
+          textArea area = getStrAreaOnCur();
+          selectedText.bY = cur.y;
+          selectedText.bX = cur.x;
+          selectedText.eY = area.eY;
+          selectedText.eX = area.eX;
+          deleteSelection();
+          syncCurPosOnScr();
+          handleEvent(Event::INPUT);
+        }
+        else if (c == 'i') {
+          if (readKey() == 'w') {
             textArea area = getStrAreaOnCur();
-            selectedText.bY = cur.y;
-            selectedText.bX = cur.x;
-            selectedText.eY = area.eY;
-            selectedText.eX = area.eX;
-            deleteSelection();
+            deleteTextArea(&area);
+            unsaved = true;
+            updateRenderedLines(cur.y, 1);
             syncCurPosOnScr();
             handleEvent(Event::INPUT);
-          }
-          else if (c == 'i') {
-            if (readKey() == 'w') {
-              textArea area = getStrAreaOnCur();
-              deleteTextArea(&area);
-              unsaved = true;
-              updateRenderedLines(cur.y, 1);
-              syncCurPosOnScr();
-              handleEvent(Event::INPUT);
-            }
           }
         }
         break;
       }
       case 'p':
-        if (curInFileTree) {
-          pasteFileInCurDir();
-          break;
-        }
         pasteClipboard();
         break;
       case 'W': // Beginning of next word
@@ -184,21 +162,15 @@ void LimEditor::modeNormal() {
         gotoBegOfLastInner();
         break;
       case 'g':
-        if (curInFileTree) break;
         c = readKey();
         if (c == 'g') {
           goToFileBegin();
         }
         break;
       case 'G':
-        if (curInFileTree) break;
         goToFileEnd();
         break;
       case 'd': {
-        if (curInFileTree) {
-          removeFileOnCur();
-          break;
-        }
         c = readKey();
         if (c == 'w') {
           textArea area = getStrAreaOnCur();
@@ -224,11 +196,9 @@ void LimEditor::modeNormal() {
         break;
       }
       case 'D':
-        if (curInFileTree) break;
         delCpLineEnd();
         break;
       case 'y': {
-        if (curInFileTree) break;
         c = readKey();
         if (c == 'w') {
           textArea area = getStrAreaOnCur();
@@ -253,7 +223,6 @@ void LimEditor::modeNormal() {
         break;
       }
       case 'Y':
-        if (curInFileTree) break;
         cpLineEnd();
         break;
       case 'f':
@@ -390,8 +359,7 @@ void LimEditor::modeNormal() {
       //Movement
       case 'h': case 'j': case 'k': case 'l':
       case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
-        if (curInFileTree) curMoveFileTree(c);
-        else curMove(c);
+        curMove(c);
         break;
       default: {
         if (isdigit(c)) {
@@ -404,9 +372,7 @@ void LimEditor::modeNormal() {
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
-              if (!curInFileTree) {
-                curMove(key, d);
-              }
+              curMove(key, d);
               break;
             case 'J':
               joinLines(d);
@@ -688,6 +654,75 @@ void LimEditor::modeVisual() {
         break;
       }
     }
+  }
+}
+
+void LimEditor::keyFiletree(int c) {
+  if (!curInFileTree) return;
+  switch (c) {
+    case 'h': case 'j': case 'k': case 'l':
+    case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
+      curMoveFileTree(c);
+
+    case ESC_KEY:
+      handleEvent(Event::BACK);
+      break;
+    case TAB_KEY:
+    case ENTER_KEY: {
+      bool isFile = fTreeSelect();
+      curInFileTree = (c == TAB_KEY) || !isFile;
+      syncCurPosOnScr();
+      renderShownText(firstShownLine);
+      break;
+    }
+    case 'a':
+      createFile();
+      break;
+    case 'r':
+      renameFileOnCur();
+      break;
+    case ':':
+      handleEvent(Event::COMMAND);
+      break;
+    case '!':
+      handleEvent(Event::COMMAND);
+      comLineText = ":!";
+      execBashCommand();
+      handleEvent(Event::BACK);
+      break;
+    case '/':
+    case CTRL_F_KEY: // C+f
+      handleEvent(Event::COMMAND);
+      search();
+      handleEvent(Event::BACK);
+      break;
+    case 'c':
+      copyFileOnCur();
+      break;
+    case 'p':
+      pasteFileInCurDir();
+      break;
+    case 'd':
+      removeFileOnCur();
+      break;
+    case CTRL_N_KEY: // C-n
+      ftree.toggleShow();
+      curInFileTree = false;
+      renderFiletree();
+      break;
+    case CTRL_H_KEY: // C-h
+      if (ftree.isShown() && !curInFileTree) {
+        curInFileTree = true;
+        syncCurPosOnScr();
+      }
+      break;
+    case CTRL_L_KEY: // C-l
+      if (ftree.isShown() && curInFileTree) {
+        curInFileTree = false;
+        syncCurPosOnScr();
+      }
+      break;
+
   }
 }
 

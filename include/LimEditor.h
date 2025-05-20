@@ -133,6 +133,7 @@ class LimEditor : public ModeState {
 
     Config config;
 
+    void keyFiletree(int c);
     bool readConfig();
     void clearAll();
     void updateVariables();
