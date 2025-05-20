@@ -529,7 +529,6 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
       case '*':
-        if (curInFileTree) break;
         searchStrOnSelection();
         handleEvent(Event::BACK);
         break;
@@ -563,12 +562,10 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
       case 'r':
-        if (!curInFileTree) {
-          c = readKey();
-          replaceTextAreaChar(&selectedText, c);
-          clearSelectionUpdate();
-          handleEvent(Event::BACK);
-        }
+        c = readKey();
+        replaceTextAreaChar(&selectedText, c);
+        clearSelectionUpdate();
+        handleEvent(Event::BACK);
         break;
 
       case 'W': // Beginning of next word
@@ -637,11 +634,9 @@ void LimEditor::modeVisual() {
           switch (key) {
             case 'h': case 'j': case 'k': case 'l':
             case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
-              if (!curInFileTree) {
-                curMove(key, d);
-                updateSelectedText();
-                updateRenderedLines(firstShownLine);
-              }
+              curMove(key, d);
+              updateSelectedText();
+              updateRenderedLines(firstShownLine);
               break;
             case '<':
               shiftLeft(d, 0);
@@ -663,7 +658,6 @@ void LimEditor::keyFiletree(int c) {
     case 'h': case 'j': case 'k': case 'l':
     case LEFT_KEY: case DOWN_KEY: case UP_KEY: case RIGHT_KEY:
       curMoveFileTree(c);
-
     case ESC_KEY:
       handleEvent(Event::BACK);
       break;
@@ -722,7 +716,6 @@ void LimEditor::keyFiletree(int c) {
         syncCurPosOnScr();
       }
       break;
-
   }
 }
 
@@ -1070,6 +1063,9 @@ bool LimEditor::fTreeSelect() {
     syncCurPosOnScr();
     return false;
   } else {
+    if (ftree.getElementOnCur()->name == fileName) {
+      return true;
+    }
     if (unsaved) {
       while(1) {
         string ans = queryUser("Unsaved changes. Save changes [y/n]:");
