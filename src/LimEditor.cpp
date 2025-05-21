@@ -171,6 +171,9 @@ void LimEditor::modeNormal() {
       case 'G':
         goToFileEnd();
         break;
+      case 'x':
+        delCpChar();
+        break;
       case 'd': {
         c = readKey();
         if (c == 'w') {
@@ -546,6 +549,7 @@ void LimEditor::modeVisual() {
         handleEvent(Event::BACK);
         break;
       case 'd':
+      case 'x':
         copySelection();
         deleteSelection();
         handleEvent(Event::BACK);
@@ -2767,6 +2771,12 @@ void LimEditor::checkSelectionPoints(textArea* selection) {
   }
 }
 
+void LimEditor::cpChar() {
+  Clip clip;
+  clip.push_back(LineYank(lines[cur.y].substr(cur.x, 1), false));
+  clipboard.copyClip(clip);
+}
+
 void LimEditor::cpLine() {
   Clip clip;
   clip.push_back(LineYank(lines[cur.y], true));
@@ -2806,6 +2816,17 @@ void LimEditor::delCpLineEnd() {
   updateRenderedLines(cur.y, 1);
   if (cur.x > 0) {
     cur.x--;
+    syncCurPosOnScr();
+  }
+}
+
+void LimEditor::delCpChar() {
+  unsaved = true;
+  cpChar();
+  lines[cur.y].erase(cur.x, 1);
+  updateRenderedLines(cur.y, 1);
+  if (curIsAtMaxPos()) {
+    cur.x = maxPosOfLine(cur.y);
     syncCurPosOnScr();
   }
 }

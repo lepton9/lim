@@ -40,6 +40,7 @@ A basic Vim-like text editor.
 | `yy`, `yw`, `yiw`     | Yanking                                         |
 | `dd`, `dw`, `diw`     | Deleting and yanking                            |
 | `cw`, `ciw`           | Delete and change                               |
+| `x`                   | Delete a character                              |
 | `e`, `w`, `b`         | Inner word movement                             |
 | `E`, `W`, `B`         | Movement over whitespace                        |
 | `J`                   | Join the line below with the current line       |

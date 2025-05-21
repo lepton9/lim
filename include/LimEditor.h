@@ -258,10 +258,12 @@ class LimEditor : public ModeState {
     void swapSelectionVISUAL(textArea* selection);
     void swapSelectionVLINE(textArea* selection);
     void checkSelectionPoints(textArea* selection);
+    void cpChar();
     void cpLine();
     void cpLineEnd();
     void delCpLine();
     void delCpLineEnd();
+    void delCpChar();
     void pasteClipboard(int i = 0);
     void getWinSize();
     fstream* openFile(string fullPath, bool createIfNotFound);
