@@ -1,5 +1,6 @@
 #include "../include/LimEditor.h"
 #include "../include/utils.h"
+#include <cassert>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -17,8 +18,8 @@ LimEditor::LimEditor() {
 void LimEditor::modeNormal() {
   // updateStatBar();
 
-  if (fileOpen && curIsAtMaxPos()) {
-    cur.x = maxPosOfLine(cur.y);
+  if (fileOpen) {
+    setCursorInbounds();
     syncCurPosOnScr();
   }
 
@@ -2239,6 +2240,7 @@ void LimEditor::syncCurPosOnScr() {
     }
     int padLeft = (ftree.isShown()) ? ftree.treeWidth + 1 : 0;
     printf("\033[%d;%dH", cur.y - firstShownLine + marginTop, cur.x - firstShownCol + marginLeft + padLeft);
+    updateLineNums(firstShownLine);
     fflush(stdout);
   }
 }
@@ -2687,22 +2689,32 @@ void LimEditor::deleteTextArea(textArea* area) {
     }
   } else {
     int delLines = 0;
-    lines[startLine].erase(area->bX);
-    if (endLine - startLine > 1) {
-      lines.erase(lines.begin() + startLine + 1, lines.begin() + endLine);
-      delLines = endLine - startLine - 1;
-    }
     if (area->eX == lines[endLine - delLines].length()) {
-      lines.erase(lines.begin() + endLine - delLines);
+      lines.erase(lines.begin() + startLine, lines.begin() + endLine + 1);
     } else {
-      lines[endLine - delLines].erase(0, area->eX + 1);
+      lines[startLine].erase(area->bX);
+      lines[endLine].erase(0, area->eX + 1);
+      lines[startLine].append(lines[endLine]);
+      lines.erase(lines.begin() + startLine + 1, lines.begin() + endLine + 1);
     }
-    lines[startLine].append(lines[endLine - delLines]);
-    lines.erase(lines.begin() + endLine - delLines);
   }
-  if (lines[cur.y].empty()) cur.x = 0;
-  else {
-    cur.x = min(area->bX, static_cast<int>(lines[startLine].length()));
+  handleFileEmpty();
+}
+
+void LimEditor::setCursorInbounds() {
+  if (cur.y < 0) cur.y = 0;
+  else if (cur.y >= lines.size()) {
+    cur.y = lines.size() - 1;
+  }
+  if (cur.x < 0) cur.x = 0;
+  else if (curIsAtMaxPos()) {
+    cur.x = maxPosOfLine(cur.y);
+  }
+}
+
+void LimEditor::handleFileEmpty() {
+  if (lines.size() == 0) {
+    lines.push_back("");
   }
 }
 
@@ -2771,12 +2783,20 @@ void LimEditor::cpLineEnd() {
 void LimEditor::delCpLine() {
   unsaved = true;
   cpLine();
-  lines.erase(lines.begin() + cur.y);
+  int fileLen = lines.size();
+  if (fileLen == 1) {
+    lines[0].clear();
+  } else {
+    lines.erase(lines.begin() + cur.y);
+  }
+  if (cur.y > 0 && cur.y == fileLen - 1) {
+    cur.y--;
+  }
   updateRenderedLines(cur.y);
   if (curIsAtMaxPos()) {
     cur.x = maxPosOfLine(cur.y);
-    syncCurPosOnScr();
   }
+  syncCurPosOnScr();
 }
 
 void LimEditor::delCpLineEnd() {

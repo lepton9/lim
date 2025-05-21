@@ -223,6 +223,8 @@ class LimEditor : public ModeState {
     bool curIsOutOfScreenHor();
     void setCurToScreenVer();
     void setCurToScreenHor();
+    void setCursorInbounds();
+    void handleFileEmpty();
     int maxPosOfLine(int y);
     int minPosOfLineIWS(int y);
     void scrollUp(int n = 1);
