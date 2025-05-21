@@ -554,6 +554,17 @@ void LimEditor::modeVisual() {
         deleteSelection();
         handleEvent(Event::BACK);
         break;
+      case 'V':
+        handleEvent(Event::VLINE);
+        selectionToLineSel(&selectedText);
+        break;
+      case 'D':
+        handleEvent(Event::VLINE);
+        selectionToLineSel(&selectedText);
+        copySelection();
+        deleteSelection();
+        handleEvent(Event::BACK);
+        break;
       case 'c':
         replaceSelectionEmpty();
         handleEvent(Event::INPUT);
@@ -2769,6 +2780,13 @@ void LimEditor::checkSelectionPoints(textArea* selection) {
       swapSelectionVISUAL(selection);
     }
   }
+}
+
+void LimEditor::selectionToLineSel(textArea* selection) {
+  if (selectedText.isNull()) return;
+  checkSelectionPoints(&selectedText);
+  selection->bX = 0;
+  selection->eX = lines[selection->eY].size();
 }
 
 void LimEditor::cpChar() {

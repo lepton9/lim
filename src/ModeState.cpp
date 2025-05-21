@@ -21,6 +21,7 @@ void ModeState::handleEvent(Event event) {
     if (event == Event::BACK) sToNormal();
     else if (event == Event::COMMAND) sToCommand();
     else if (event == Event::INPUT) sToInput();
+    else if (event == Event::VLINE) sToVLine();
     break;
   case State::VLINE:
     if (event == Event::BACK) sToNormal();

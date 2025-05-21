@@ -159,12 +159,12 @@ class LimEditor : public ModeState {
     void refreshFileTree();
     void createFile();
     void closeCurFile();
+    void curTreeUp();
     void removeDirOnCur();
     void removeFileOnCur();
     void renameFileOnCur();
     void copyFileOnCur();
     void pasteFileInCurDir();
-    void curTreeUp();
     void curTreeDown();
     void curMove(int c, int n = 1);
     void curUp();
@@ -258,6 +258,7 @@ class LimEditor : public ModeState {
     void swapSelectionVISUAL(textArea* selection);
     void swapSelectionVLINE(textArea* selection);
     void checkSelectionPoints(textArea* selection);
+    void selectionToLineSel(textArea* selection);
     void cpChar();
     void cpLine();
     void cpLineEnd();
